@@ -29,7 +29,7 @@ def get_config(config_file, section_name='GENERAL'):
     parser_sec = parser[section_name]
     
     allowed_keys = ['mode', 'mindate', 'maxdate', 'acq_mode', 'aoi_tiles', 'aoi_geometry', 'kml_file',
-                    'work_dir', 'scene_dir', 'out_dir', 'tmp_dir', 'dem_dir', 'wbm_dir',
+                    'work_dir', 'scene_dir', 'out_dir', 'tmp_dir', 'wbm_dir',
                     'db_file', 'dem_type', 'gdal_threads', 'compression', 'logfile']
     out_dict = {}
     for k, v in parser_sec.items():

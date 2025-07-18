@@ -657,7 +657,6 @@ def _log_process_config(logger, config):
     work_dir            {config['work_dir']}
     out_dir             {config['out_dir']}
     tmp_dir             {config['tmp_dir']}
-    dem_dir             {config['dem_dir']}
     wbm_dir             {config['wbm_dir']}
     
     scene_dir           {config['scene_dir']}
