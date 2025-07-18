@@ -17,9 +17,11 @@ from ERS_NRB.config import get_config, geocode_conf, gdal_conf
 import ERS_NRB.ancillary as ancil
 import ERS_NRB.tile_extraction as tile_ex
 from ERS_NRB.metadata import extract, stacparser, xmlparser
+
 gdal.UseExceptions()
 
 from s1ard import dem
+
 
 def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None, multithread=True,
                    overviews=None, recursive=False):
@@ -61,7 +63,7 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
     -------
     None
     """
-    compress=config['compression']
+    compress = config['compression']
     if overviews is None:
         overviews = [2, 4, 9, 18, 36]
     
@@ -90,7 +92,7 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
                             rasterize(vectorobject=bounds, reference=ras, outname=snap_dm_ras)
                         if not os.path.isfile(snap_dm_vec):
                             bounds.write(outfile=snap_dm_vec)
-              
+        
         with Vector(snap_dm_vec) as bounds:
             with bbox(extent, epsg) as tile_geom:
                 tile_geom.write(outfile=snap_dm_vec.replace('datamask', 'kml_file').replace('.gpkg', '.geojson'))
@@ -109,7 +111,7 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
                            '\n{scenes}'.format(tile_id=tile, scenes=scenes))
     
     src_scenes = [i.scene for i in ids]
-
+    
     product_start = ids[0].meta['SPH_FIRST_LINE_TIME']
     product_stop = ids[0].meta['SPH_LAST_LINE_TIME']
     meta = {'mission': ids[0].sensor,
@@ -121,7 +123,7 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
                              "['VV', 'HH']": 'VC',
                              "['HH', 'VV']": 'VC',
                              "['VH', 'VV']": 'VX',
-                             "['VV', 'VH']": 'VX'}[str(ids[0].polarizations)],            
+                             "['VV', 'VH']": 'VX'}[str(ids[0].polarizations)],
             'start': product_start,
             'orbitnumber': ids[0].meta['orbitNumber_abs'],
             'datatake': hex(ids[0].meta['frameNumber']).replace('x', '').upper(),
@@ -129,7 +131,7 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
             'tile': tile,
             'id': 'ABCD'}
     skeleton = '{mission}_{mode}_NRB__1S{polarization}_{start}_{stop}_{orbitnumber:06}_{datatake:06}_{id}'
-
+    
     nrbdir = os.path.join(outdir, skeleton.format(**meta))
     os.makedirs(nrbdir, exist_ok=True)
     
@@ -153,7 +155,7 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
                 'incidenceAngleFromEllipsoid': {'suffix': 'ei',
                                                 'z_error': 1e-3},
                 'layoverShadowMask': {'suffix': 'dm',
-                                      'z_error': 0,},
+                                      'z_error': 0, },
                 'localIncidenceAngle': {'suffix': 'li',
                                         'z_error': 1e-2},
                 'scatteringArea': {'suffix': 'lc',
@@ -183,9 +185,9 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
             if compress.startswith('LERC'):
                 entry = 'MAX_Z_ERROR={:f}'.format(item_map[key]['z_error'])
                 write_options[key].append(entry)
-    write_options['layoverShadowMask'].append("BIGTIFF=YES")   
-    write_options['acquisitionImage'].append("BIGTIFF=YES")    
-
+    write_options['layoverShadowMask'].append("BIGTIFF=YES")
+    write_options['acquisitionImage'].append("BIGTIFF=YES")
+    
     ####################################################################################################################
     # format existing datasets found by `pyroSAR.ancillary.find_datasets`
     if len(datasets) > 1:
@@ -249,7 +251,7 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
             snap_nodata = 0
             gdalwarp(source, outname,
                      options={'format': driver, 'outputBounds': bounds, 'srcNodata': snap_nodata, 'dstNodata': 'nan',
-                              'multithread': multithread, 'creationOptions': write_options[key]})            
+                              'multithread': multithread, 'creationOptions': write_options[key]})
     
     proc_time = datetime.now()
     t = proc_time.isoformat().encode()
@@ -278,7 +280,7 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
     ###################################################################################################################
     # Acquisition ID image
     with Raster(gs_path) as ras_gs:
-        extent = ras_gs.extent    
+        extent = ras_gs.extent
     ancil.create_acq_id_image(ref_tif=gs_path, valid_mask_list=snap_dm_tile_overlap, src_scenes=src_scenes,
                               extent=extent, epsg=epsg, driver=driver, creation_opt=write_options['acquisitionImage'],
                               overviews=overviews)
@@ -288,7 +290,7 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
     for item in measure_paths:
         sigma0_rtc_lin = item.replace('g-lin.tif', 's-lin.vrt')
         sigma0_rtc_log = item.replace('g-lin.tif', 's-log.vrt')
-
+        
         if not os.path.isfile(sigma0_rtc_lin):
             ancil.vrt_pixfun(src=[item, gs_path], dst=sigma0_rtc_lin, fun='mul',
                              options={'VRTNodata': 'NaN'}, overviews=overviews, overview_resampling=ovr_resampling)
@@ -297,18 +299,18 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
         if not os.path.isfile(sigma0_rtc_log):
             ancil.vrt_pixfun(src=sigma0_rtc_lin, dst=sigma0_rtc_log, fun='log10', scale=10,
                              options={'VRTNodata': 'NaN'}, overviews=overviews, overview_resampling=ovr_resampling)
-
+        
         gamma0_rtc_log = item.replace('lin.tif', 'log.vrt')
         gamma0_rtc_lin = item.replace('lin.tif', 'lin.vrt')
-
+        
         if not os.path.isfile(gamma0_rtc_lin):
             ancil.vrt_pixfun(src=[item, gs_path], dst=gamma0_rtc_lin, fun='mul',
-                            options={'VRTNodata': 'NaN'}, overviews=overviews, overview_resampling=ovr_resampling)            
+                             options={'VRTNodata': 'NaN'}, overviews=overviews, overview_resampling=ovr_resampling)
             ancil.vrt_relpath(gamma0_rtc_lin)
-
+        
         if not os.path.isfile(gamma0_rtc_log):
             ancil.vrt_pixfun(src=gamma0_rtc_lin, dst=gamma0_rtc_log, fun='log10', scale=10,
-                       options={'VRTNodata': 'NaN'}, overviews=overviews, overview_resampling=ovr_resampling)
+                             options={'VRTNodata': 'NaN'}, overviews=overviews, overview_resampling=ovr_resampling)
     ###################################################################################################################
     # log-scaled gamma nought & color composite
     if len(measure_paths) > 1:
@@ -321,17 +323,17 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
             ## The file should be already present (previous step)
             if not os.path.isfile(lin):
                 ancil.vrt_pixfun(src=[item, gs_path], dst=lin, fun='mul',
-                                options={'VRTNodata': 'NaN'}, overviews=overviews, overview_resampling=ovr_resampling)            
+                                 options={'VRTNodata': 'NaN'}, overviews=overviews, overview_resampling=ovr_resampling)
                 ancil.vrt_relpath(lin)
             ## The file should be already present (previous step)
             if not os.path.isfile(log):
                 ancil.vrt_pixfun(src=lin, dst=log, fun='log10', scale=10,
-                        options={'VRTNodata': 'NaN'}, overviews=overviews, overview_resampling=ovr_resampling)
+                                 options={'VRTNodata': 'NaN'}, overviews=overviews, overview_resampling=ovr_resampling)
         
         cc_path = re.sub('[hv]{2}', 'cc', measure_paths[0]).replace('.tif', '.vrt')
         cc_path = re.sub('[hv]{2}', 'cc', log_vrts[0])
         ancil.create_rgb_vrt(outname=cc_path, infiles=measure_paths, overviews=overviews,
-                         overview_resampling=ovr_resampling)                       
+                             overview_resampling=ovr_resampling)
     ####################################################################################################################
     # metadata
     print("metadata")
@@ -339,6 +341,7 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
     meta = extract.meta_dict(config=config, target=nrbdir, src_scenes=src_scenes, src_files=files, proc_time=proc_time)
     stacparser.main(meta=meta, target=nrbdir, tifs=nrb_tifs)
     xmlparser.main(meta=meta, target=nrbdir, tifs=nrb_tifs)
+
 
 def main(config_file, section_name):
     config = get_config(config_file=config_file, section_name=section_name)
@@ -360,12 +363,12 @@ def main(config_file, section_name):
     # archive / scene selection
     scenesERS = finder(config['scene_dir'], [r'^SAR.*\.E[12]'], regex=True, recursive=True)
     scenesENVI = finder(config['scene_dir'], [r'^ASA.*\.N1'], regex=True, recursive=True)
-
+    
     scenes = scenesERS + scenesENVI
     if not os.path.isfile(config['db_file']):
         config['db_file'] = os.path.join(config['work_dir'], config['db_file'])
     
-    with Archive(dbfile=config['db_file']) as archive:        
+    with Archive(dbfile=config['db_file']) as archive:
         archive.insert(scenes)
         product = 'PRI'
         if config['acq_mode'] in ['IMS']:
@@ -384,7 +387,7 @@ def main(config_file, section_name):
     ####################################################################################################################
     # geometry and DEM handling
     ids = identify_many(selection)
-
+    
     geo_dict, align_dict = tile_ex.main(config=config, tr=geocode_prms['spacing'])
     # geo_dict, align_dict = tile_ex.no_aoi(ids=ids, spacing=geocode_prms['spacing'])
     aoi_tiles = list(geo_dict.keys())
@@ -410,7 +413,7 @@ def main(config_file, section_name):
             
             list_processed = finder(config['out_dir'], [scene.start], regex=True, recursive=False)
             exclude = list(np_dict.values())
-            log.info(f'scene {i+1}/{len(ids)}: {scene.scene}')
+            log.info(f'scene {i + 1}/{len(ids)}: {scene.scene}')
             if len([item for item in list_processed if not any(ex in item for ex in exclude)]) < 3:
                 start_time = time.time()
                 try:
@@ -420,7 +423,7 @@ def main(config_file, section_name):
                     geocode(infile=scene, outdir=config['out_dir'], t_srs=epsg, tmpdir=config['tmp_dir'],
                             standardGridOriginX=align_dict['xmax'], standardGridOriginY=align_dict['ymin'],
                             externalDEMFile=fname_dem, externalDEMNoDataValue=None, **geocode_prms)
-
+                    
                     t = round((time.time() - start_time), 2)
                     log.info('[GEOCODE] -- {scene} -- {time}'.format(scene=scene.scene, time=t))
                 except Exception as e:
@@ -445,19 +448,19 @@ def main(config_file, section_name):
             if not os.path.isfile(wbm):
                 wbm = None
             for s, scenes in enumerate(selection_grouped):
-                if isinstance(scenes, str):                    
+                if isinstance(scenes, str):
                     scenes = [scenes]
                 print('###### [NRB] Tile {t}/{t_total}: {tile} | '
-                      'Scenes {s}/{s_total}: {scenes} '.format(tile=tile, t=t+1, t_total=len(aoi_tiles),
+                      'Scenes {s}/{s_total}: {scenes} '.format(tile=tile, t=t + 1, t_total=len(aoi_tiles),
                                                                scenes=[os.path.basename(s) for s in scenes],
-                                                               s=s+1, s_total=len(selection_grouped)))
+                                                               s=s + 1, s_total=len(selection_grouped)))
                 start_time = time.time()
                 try:
                     nrb_processing(config=config, scenes=scenes, datadir=os.path.dirname(outdir), outdir=outdir,
-                                    tile=tile, extent=geo_dict[tile]['ext'], epsg=epsg, wbm=wbm,
-                                    multithread=gdal_prms['multithread'])
+                                   tile=tile, extent=geo_dict[tile]['ext'], epsg=epsg, wbm=wbm,
+                                   multithread=gdal_prms['multithread'])
                     log.info('[    NRB] -- {scenes} -- {time}'.format(scenes=scenes,
-                                                                time=round((time.time() - start_time), 2)))
+                                                                      time=round((time.time() - start_time), 2)))
                 except Exception as e:
                     log.exception('[    NRB] -- {scenes} -- {error}'.format(scenes=scenes, error=e))
                     continue
