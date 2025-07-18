@@ -419,7 +419,7 @@ def main(config_file, section_name):
                     #         demName='SRTM 3Sec', externalDEMNoDataValue=ex_dem_nodata, **geocode_prms)
                     geocode(infile=scene, outdir=config['out_dir'], t_srs=epsg, tmpdir=config['tmp_dir'],
                             standardGridOriginX=align_dict['xmax'], standardGridOriginY=align_dict['ymin'],
-                            externalDEMFile=fname_dem, externalDEMNoDataValue=None, **geocode_prms, rlks=scene.meta['looks'][0], azlks=scene.meta['looks'][1])
+                            externalDEMFile=fname_dem, externalDEMNoDataValue=None, **geocode_prms)
 
                     t = round((time.time() - start_time), 2)
                     log.info('[GEOCODE] -- {scene} -- {time}'.format(scene=scene.scene, time=t))
