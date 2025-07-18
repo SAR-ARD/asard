@@ -12,7 +12,6 @@ from spatialist.auxil import gdalbuildvrt, gdalwarp
 from pyroSAR import identify_many, Archive
 from pyroSAR.snap.util import geocode
 from pyroSAR.ancillary import find_datasets
-from pyroSAR.auxdata import dem_autoload, dem_create
 from ERS_NRB.config import get_config, geocode_conf, gdal_conf
 
 import ERS_NRB.ancillary as ancil
@@ -20,6 +19,7 @@ import ERS_NRB.tile_extraction as tile_ex
 from ERS_NRB.metadata import extract, stacparser, xmlparser
 gdal.UseExceptions()
 
+from s1ard import dem
 
 def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None, multithread=True,
                    overviews=None, recursive=False):
@@ -353,6 +353,9 @@ def main(config_file, section_name):
     elif config['mode'] == 'nrb':
         snap_flag = False
     
+    username, password = dem.authenticate(dem_type=config['dem_type'],
+                                          username=None, password=None)
+    
     ####################################################################################################################
     # archive / scene selection
     scenesERS = finder(config['scene_dir'], [r'^SAR.*\.E[12]'], regex=True, recursive=True)
@@ -390,15 +393,6 @@ def main(config_file, section_name):
         raise RuntimeError('The AOI covers multiple UTM zones: {}\n '
                            'This is currently not supported. Please refine your AOI.'.format(list(epsg_set)))
     epsg = epsg_set.pop()
-    # DEM disable
-    dem_names, wbm_names = prepare_dem(id_list=ids, config=config, threads=gdal_prms['threads'], epsg=epsg,
-                            spacing=geocode_prms['spacing'], buffer=1.5)
-    
-    if config['dem_type'] == 'Copernicus 30m Global DEM':
-        ex_dem_nodata = -99
-    else:
-        ex_dem_nodata = None
-    
     ####################################################################################################################
     # geocode & noise power - SNAP processing
     np_dict = {'sigma0': 'NESZ', 'beta0': 'NEBZ', 'gamma0': 'NEGZ'}
@@ -407,20 +401,12 @@ def main(config_file, section_name):
     #     print(scene.meta)
     if snap_flag:
         for i, scene in enumerate(ids):
-            # DEM disable
-            dem_buffer = 200  # meters
             fname_dem = os.path.join(config['tmp_dir'], scene.outname_base() + '_DEM.tif')
             if not os.path.isfile(fname_dem):
-                with scene.geometry() as footprint:
-                    footprint.reproject(epsg)
-                    extent = footprint.extent
-                    extent['xmin'] -= dem_buffer
-                    extent['ymin'] -= dem_buffer
-                    extent['xmax'] += dem_buffer
-                    extent['ymax'] += dem_buffer
-                    with bbox(extent, epsg) as dem_box:
-                        with Raster(dem_names[i], list_separate=False)[dem_box] as dem_mosaic:
-                            dem_mosaic.write(fname_dem, format='GTiff')                         
+                with scene.bbox() as geom:
+                    dem.mosaic(geometry=geom, outname=fname_dem,
+                               dem_type=config['dem_type'],
+                               username=username, password=password)
             
             list_processed = finder(config['out_dir'], [scene.start], regex=True, recursive=False)
             exclude = list(np_dict.values())
@@ -477,96 +463,7 @@ def main(config_file, section_name):
                     continue
         
         gdal.SetConfigOption('GDAL_NUM_THREADS', gdal_prms['threads_before'])
-def prepare_dem(id_list, config, threads, epsg, spacing, buffer=None):
-    """
-    Downloads and prepares the chosen DEM for the NRB processing workflow.
-    
-    Parameters
-    ----------
-    id_list: list[pyroSAR.drivers.ID]
-        A list of pyroSAR metadata handlers for the current selection of scenes.
-    config: dict
-        Dictionary of the parsed config parameters for the current process.
-    threads: int
-        The number of threads to pass to `pyroSAR.auxdata.dem_create`.
-    epsg: int
-        The CRS used for the NRB product; provided as an EPSG code.
-    spacing: int
-        The target resolution to pass to `pyroSAR.auxdata.dem_create`.
-    buffer: float, optional
-        A buffer in degrees to pass to `pyroSAR.auxdata.dem_autoload`.
-    
-    Returns
-    -------
-    dem_names: list[list[str]]
-        List of lists containing paths to DEM tiles for each scene to be processed.
-    """
-    if config['dem_type'] == 'GETASSE30':
-        geoid = 'WGS84'
-    else:
-        geoid = 'EGM2008'
-    
-    tr = spacing
-    wbm_dems = ['Copernicus 10m EEA DEM',
-                'Copernicus 30m Global DEM II']
-    wbm_dir = os.path.join(config['wbm_dir'], config['dem_type'])
-    dem_dir = os.path.join(config['dem_dir'], config['dem_type'])
-    username = None
-    password = None
-    
-    boxes = [i.bbox() for i in id_list]
-    max_ext = ancil.get_max_ext(boxes=boxes, buffer=buffer)
-    ext_id = ancil.generate_unique_id(encoded_str=str(max_ext).encode())
-    
-    fname_wbm_tmp = os.path.join(wbm_dir, 'mosaic_{}.vrt'.format(ext_id))
-    fname_dem_tmp = os.path.join(dem_dir, 'mosaic_{}.vrt'.format(ext_id))
-    os.makedirs(dem_dir, exist_ok=True)
-    os.makedirs(wbm_dir, exist_ok=True)
 
-    if config['dem_type'] in wbm_dems:
-        if not os.path.isfile(fname_wbm_tmp) or not os.path.isfile(fname_dem_tmp):
-            username = os.environ.get('FTP_USER')
-            password = os.environ.get('FTP_PASS')
-        if not os.path.isfile(fname_wbm_tmp):
-            dem_autoload(boxes, demType=config['dem_type'],
-                         vrt=fname_wbm_tmp, buffer=buffer, product='wbm',
-                         username=username, password=password,
-                         nodata=1, hide_nodata=True)
-    if not os.path.isfile(fname_dem_tmp):
-        dem_autoload(boxes, demType=config['dem_type'],
-                     vrt=fname_dem_tmp, buffer=buffer, product='dem',
-                     username=username, password=password,
-                     dst_nodata=0, hide_nodata=True, crop=False)
-    
-    dem_names = []
-    wbm_names = []
-    for scene in id_list:
-            dem_names_scene = []
-            with scene.bbox() as box:
-                tiles = tile_ex.tiles_from_aoi(vectorobject=box, kml=config['kml_file'], epsg=epsg)
-                for tilename in tiles:
-                    dem_tile = os.path.join(dem_dir, '{}_DEM.tif'.format(tilename))
-                    dem_names_scene.append(dem_tile)
-                    if not os.path.isfile(dem_tile):
-                        with tile_ex.extract_tile(config['kml_file'], tilename) as tile:
-                            ext = tile.extent
-                            bounds = [ext['xmin'], ext['ymin'], ext['xmax'], ext['ymax']]
-                            dem_create(src=fname_dem_tmp, dst=dem_tile, t_srs=epsg, tr=(tr, tr),
-                                        geoid_convert=True, geoid=geoid, pbar=True,
-                                        outputBounds=bounds, threads=threads, nodata=-32767)
-                if os.path.isfile(fname_wbm_tmp):
-                    for tilename in tiles:
-                        wbm_tile = os.path.join(wbm_dir, '{}_WBM.tif'.format(tilename))
-                        if not os.path.isfile(wbm_tile):
-                            with tile_ex.extract_tile(config['kml_file'], tilename) as tile:
-                                ext = tile.extent
-                                bounds = [ext['xmin'], ext['ymin'], ext['xmax'], ext['ymax']]
-                                dem_create(src=fname_wbm_tmp, dst=wbm_tile, t_srs=epsg, tr=(tr, tr),
-                                        resampling_method='mode', pbar=True, outputBounds=bounds, threads=threads, nodata=-32767)
-            dem_names.append(dem_names_scene)
-    boxes = None  # make sure all bounding box Vector objects are deleted
-    
-    return dem_names, wbm_names
 
 if __name__ == '__main__':
     main(config_file='config.ini', section_name='GENERAL')
