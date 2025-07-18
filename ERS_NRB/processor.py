@@ -377,8 +377,8 @@ def main(config_file, section_name):
                                                                                         mindate=config['mindate'],
                                                                                         maxdate=config['maxdate'],
                                                                                         scene_dir=config['scene_dir']))
-    
-     ####################################################################################################################
+    log.info(f'found {len(selection)} scene(s)')
+    ####################################################################################################################
     # geometry and DEM handling
     ids = identify_many(selection)
 
@@ -424,8 +424,7 @@ def main(config_file, section_name):
             
             list_processed = finder(config['out_dir'], [scene.start], regex=True, recursive=False)
             exclude = list(np_dict.values())
-            print('###### [GEOCODE] Scene {s}/{s_total}: {scene}'.format(s=i+1, s_total=len(ids),
-                                                                         scene=scene.scene))
+            log.info(f'scene {i+1}/{len(ids)}: {scene.scene}')
             if len([item for item in list_processed if not any(ex in item for ex in exclude)]) < 3:
                 start_time = time.time()
                 try:
@@ -438,9 +437,6 @@ def main(config_file, section_name):
 
                     t = round((time.time() - start_time), 2)
                     log.info('[GEOCODE] -- {scene} -- {time}'.format(scene=scene.scene, time=t))
-                    if t <= 500:
-                        log.warning('[GEOCODE] -- {scene} -- Processing might have terminated prematurely. Check'
-                                    ' terminal for uncaught SNAP errors!'.format(scene=scene.scene))
                 except Exception as e:
                     log.error('[GEOCODE] -- {scene} -- {error}'.format(scene=scene.scene, error=e))
                     print('[GEOCODE] -- {scene} -- {error}'.format(scene=scene.scene, error=e))

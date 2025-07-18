@@ -7,12 +7,17 @@ from time import gmtime, strftime
 from copy import deepcopy
 from datetime import datetime
 from lxml import etree
+from textwrap import dedent
 import numpy as np
 from osgeo import gdal
 import spatialist
 from spatialist import gdalbuildvrt, Raster, bbox
 import pyroSAR
 from pyroSAR import identify, examine, identify_many
+import ERS_NRB
+
+log = logging.getLogger('s1ard')
+
 
 def group_by_time(scenes, time=3):
     """
@@ -215,7 +220,7 @@ def create_rgb_vrt(outname, infiles, overviews, overview_resampling):
         Internal overview levels to be defined for the created VRT file.
     overview_resampling: str
         Resampling method applied to overview pyramids.
-    """    
+    """
     # make sure order is right and co-polarization (VV or HH) is first
     pols = [re.search('[hv]{2}', os.path.basename(f)).group() for f in infiles]
     if pols[1] in ['vv', 'hh']:
@@ -568,96 +573,110 @@ def get_max_ext(boxes, buffer=None):
     return max_ext
 
 
-def set_logging(config):
+def set_logging(config, debug=False):
     """
     Set logging for the current process.
-    
+
     Parameters
     ----------
     config: dict
         Dictionary of the parsed config parameters for the current process.
-    
+    debug: bool
+        Set logging level to DEBUG?
+
     Returns
     -------
-    log_local: logging.Logger
+    logging.Logger
         The log handler for the current process.
     """
-    # pyroSAR logging as sys.stdout
-    log_pyro = logging.getLogger('pyroSAR')
-    log_pyro.setLevel(logging.INFO)
-    sh = logging.StreamHandler(sys.stdout)
-    log_pyro.addHandler(sh)
+    level = logging.DEBUG if debug else logging.INFO
     
-    # NRB logging in logfile
-    now = datetime.now().strftime('%Y%m%dT%H%M')
-    log_local = logging.getLogger(__name__)
-    log_local.setLevel(logging.DEBUG)
-    log_file = os.path.join(config['work_dir'], 'log', f"{now}_process.log")
-    os.makedirs(os.path.dirname(log_file), exist_ok=True)
-    fh = logging.FileHandler(filename=log_file, mode='a')
-    log_local.addHandler(fh)
-    log_local.addHandler(sh)
-
+    logger = logging.getLogger('ERS_NRB')
+    logger.setLevel(level)
+    
+    log_format = "[%(asctime)s] [%(levelname)5s] %(message)s"
+    formatter = logging.Formatter(fmt=log_format,
+                                  datefmt='%Y-%m-%d %H:%M:%S')
+    
+    logfile = config['logfile']
+    if logfile is not None:
+        os.makedirs(os.path.dirname(logfile), exist_ok=True)
+        handler = logging.FileHandler(filename=logfile, mode='a')
+    else:
+        handler = logging.StreamHandler(sys.stdout)
+    logger.addHandler(handler)
+    
     # Add header first with simple formatting
-    form_simple = logging.Formatter("%(message)s")
-    fh.setFormatter(form_simple)
-    _log_process_config(logger=log_local, config=config)
+    formatter_simple = logging.Formatter("%(message)s")
+    handler.setFormatter(formatter_simple)
+    _log_process_config(logger=logger, config=config)
     
-    # Use normal formatting from here on out
-    form = logging.Formatter("[%(asctime)s] [%(levelname)8s] %(message)s")
-    fh.setFormatter(form)
+    # Use normal formatting from here on
+    handler.setFormatter(formatter)
     
-    return log_local
+    # add pyroSAR logger
+    log_pyro = logging.getLogger('pyroSAR')
+    log_pyro.setLevel(level)
+    log_pyro.addHandler(handler)
+    
+    return logger
 
 
 def _log_process_config(logger, config):
     """
     Adds a header to the logfile, which includes information about the current processing configuration.
-    
+
     Parameters
     ----------
-    logger: Logger
+    logger: logging.Logger
         The logger to which the header is added to.
     config: dict
         Dictionary of the parsed config parameters for the current process.
-    
-    Returns
-    -------
-    None
     """
-    core = examine.ExamineSnap().get_version('core')
-    s1tbx = examine.ExamineSnap().get_version('s1tbx')
+    try:
+        snap_config = examine.ExamineSnap()
+        core = snap_config.get_version('core')
+        microwavetbx = snap_config.get_version('microwavetbx')
+        snap_core = f"{core['version']} | {core['date']}"
+        snap_microwavetbx = f"{microwavetbx['version']} | {microwavetbx['date']}"
+    except RuntimeError:
+        snap_core = 'unknown'
+        snap_microwavetbx = 'unknown'
     
     header = f"""
     ====================================================================================================================
     PROCESSING CONFIGURATION
+
+    mode                {config['mode']}
+    aoi_tiles           {config['aoi_tiles']}
+    aoi_geometry        {config['aoi_geometry']}
+    mindate             {config['mindate'].isoformat()}
+    maxdate             {config['maxdate'].isoformat()}
+    acq_mode            {config['acq_mode']}
+
+    work_dir            {config['work_dir']}
+    out_dir             {config['out_dir']}
+    tmp_dir             {config['tmp_dir']}
+    dem_dir             {config['dem_dir']}
+    wbm_dir             {config['wbm_dir']}
     
-    mode = {config['mode']}
-    mindate = {config['mindate'].isoformat()}
-    maxdate = {config['maxdate'].isoformat()}
-    acq_mode = {config['acq_mode']}
-    
-    work_dir = {config['work_dir']}
-    scene_dir = {config['scene_dir']}
-    out_dir = {config['out_dir']}
-    tmp_dir = {config['tmp_dir']}
-    dem_dir = {config['dem_dir']}
-    wbm_dir = {config['wbm_dir']}
-    db_file = {config['db_file']}
-    dem_type = {config.get('dem_type')}
-    
+    scene_dir           {config['scene_dir']}
+    db_file             {config['db_file']}
+    kml_file            {config['kml_file']}
+    dem_type            {config['dem_type']}
+    gdal_threads        {config['gdal_threads']}
+
     ====================================================================================================================
     SOFTWARE
-    
-    snap-core: {core['version']} | {core['date']}
-    snap-s1tbx: {s1tbx['version']} | {s1tbx['date']}
-    python: {sys.version}
-    python-pyroSAR: {pyroSAR.__version__}
-    python-spatialist: {spatialist.__version__}
-    python-GDAL: {gdal.__version__}
-    gdal_threads = {config.get('gdal_threads')}
-    
+
+    s1ard               {ERS_NRB.__version__}
+    snap-core           {snap_core}
+    snap-microwavetbx   {snap_microwavetbx}
+    python              {sys.version}
+    python-pyroSAR      {pyroSAR.__version__}
+    python-spatialist   {spatialist.__version__}
+    python-GDAL         {gdal.__version__}
+
     ====================================================================================================================
     """
-    
-    logger.info(header)
+    logger.info(dedent(header))
