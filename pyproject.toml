@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "wheel"]
+
+[project]
+name = "ERS_NRB"
+description = "Prototype processor for the ERS Normalized Radar Backscatter (ERS NRB) product"
+requires-python = ">=3.8"
+license = { file = "LICENSE.txt" }
+maintainers = [
+    { name = "Ricardo Noguera", email = "ricardo.noguera@telespazio.com" },
+    { name = "John Truckenbrodt", email = "john.truckenbrodt@dlr.de" }
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3"
+]
+dynamic = ["version", "readme", "dependencies"]
+
+[project.urls]
+repository = "https://github.com/SAR-ARD/ERS_NRB"
+documentation = "https://ers_nrb.readthedocs.io/en/latest/"
+
+[project.optional-dependencies]
+test = ["pytest", "requests"]
+docs = ["sphinx", "sphinxcontrib-bibtex", "nbsphinx", "sphinx_rtd_theme", "sphinx-toolbox", "ipython"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["ERS_NRB"]
+
+[tool.setuptools.package-data]
+"ERS_NRB" = ["resources/*"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+readme = { file = ["README.md"], content-type = "text/markdown" }
+
+[tool.setuptools_scm]
+
+[project.scripts]
+ers_nrb = "ERS_NRB.cli:cli"
