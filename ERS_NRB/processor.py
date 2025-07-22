@@ -417,12 +417,12 @@ def main(config_file, section_name):
             if len([item for item in list_processed if not any(ex in item for ex in exclude)]) < 3:
                 start_time = time.time()
                 try:
-                    # geocode(infile=scene, outdir=config['out_dir'], t_srs=epsg, tmpdir=config['tmp_dir'],
-                    #         standardGridOriginX=align_dict['xmax'], standardGridOriginY=align_dict['ymin'],
-                    #         demName='SRTM 3Sec', externalDEMNoDataValue=ex_dem_nodata, **geocode_prms)
+                    # geocoding_type = 'Range-Doppler'
+                    geocoding_type = 'SAR simulation cross correlation'
                     geocode(infile=scene, outdir=config['out_dir'], t_srs=epsg, tmpdir=config['tmp_dir'],
                             standardGridOriginX=align_dict['xmax'], standardGridOriginY=align_dict['ymin'],
-                            externalDEMFile=fname_dem, externalDEMNoDataValue=None, **geocode_prms)
+                            externalDEMFile=fname_dem, externalDEMNoDataValue=None,
+                            geocoding_type=geocoding_type, **geocode_prms)
                     
                     t = round((time.time() - start_time), 2)
                     log.info('[GEOCODE] -- {scene} -- {time}'.format(scene=scene.scene, time=t))
