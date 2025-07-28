@@ -70,7 +70,7 @@ def vrt_pixfun(src, dst, fun, relpaths=None, scale=None, offset=None, args=None,
     >>> dst = src.replace('-lin.tif', '-log3.vrt')
     >>> create_vrt(src=src, dst=dst, fun='dB', args={'fact': 10})
     """
-    gdalbuildvrt(src=src, dst=dst, options=options)
+    gdalbuildvrt(src=src, dst=dst, **options)
     tree = etree.parse(dst)
     root = tree.getroot()
     band = tree.find('VRTRasterBand')
@@ -172,8 +172,7 @@ def create_rgb_vrt(outname, infiles, overviews, overview_resampling):
         ov = ov.replace(x, '')
     
     # create VRT file and change its content
-    gdalbuildvrt(src=infiles, dst=outname,
-                 options={'separate': True})
+    gdalbuildvrt(src=infiles, dst=outname, separate=True)
     
     tree = etree.parse(outname)
     root = tree.getroot()
@@ -294,15 +293,15 @@ def create_data_mask(outname, valid_mask_list, src_files, extent, epsg, driver, 
                     'name': 'shadow'},
                 4: {'arr_val': 4,
                     'name': 'ocean water'}}
-
+    
     tile_bounds = [extent['xmin'], extent['ymin'], extent['xmax'], extent['ymax']]
     vrt_snap_ls = '/vsimem/' + os.path.dirname(outname) + '/snap_ls.vrt'
     vrt_snap_valid = '/vsimem/' + os.path.dirname(outname) + '/snap_valid.vrt'
     vrt_snap_gamma0 = '/vsimem/' + os.path.dirname(outname) + '/snap_gamma0.vrt'
-    gdalbuildvrt(snap_ls_mask, vrt_snap_ls, options={'outputBounds': tile_bounds}, void=False)
-    gdalbuildvrt(valid_mask_list, vrt_snap_valid, options={'outputBounds': tile_bounds}, void=False)
-    gdalbuildvrt(snap_gamma0, vrt_snap_gamma0, options={'outputBounds': tile_bounds}, void=False)
-
+    gdalbuildvrt(snap_ls_mask, vrt_snap_ls, outputBounds=tile_bounds, void=False)
+    gdalbuildvrt(valid_mask_list, vrt_snap_valid, outputBounds=tile_bounds, void=False)
+    gdalbuildvrt(snap_gamma0, vrt_snap_gamma0, outputBounds=tile_bounds, void=False)
+    
     with Raster(vrt_snap_ls) as ras_snap_ls:
         with bbox(extent, crs=epsg) as tile_vec:
             rows = ras_snap_ls.rows
@@ -430,7 +429,7 @@ def create_acq_id_image(ref_tif, valid_mask_list, src_scenes, extent, epsg, driv
     arr_list = []
     for file in valid_mask_list:
         vrt_snap_valid = '/vsimem/' + os.path.dirname(outname) + 'mosaic.vrt'
-        gdalbuildvrt(file, vrt_snap_valid, options={'outputBounds': tile_bounds}, void=False)
+        gdalbuildvrt(file, vrt_snap_valid, outputBounds=tile_bounds, void=False)
         
         with bbox(extent, crs=epsg) as tile_vec:
             with Raster(vrt_snap_valid)[tile_vec] as vrt_ras:
