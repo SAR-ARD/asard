@@ -3,7 +3,6 @@ import re
 import sys
 import logging
 from time import gmtime, strftime
-from copy import deepcopy
 from datetime import datetime
 from lxml import etree
 from textwrap import dedent
@@ -144,93 +143,6 @@ def vrt_relpath(vrt):
     test.attrib['relativeToVRT'] = '1'
     etree.indent(tree.getroot())
     tree.write(vrt, pretty_print=True, xml_declaration=False, encoding='utf-8')
-
-
-def create_rgb_vrt(outname, infiles, overviews, overview_resampling):
-    """
-    Creation of the color composite VRT file.
-    Parameters
-    ----------
-    outname: str
-        Full path to the output VRT file.
-    infiles: list[str]
-        A list of paths pointing to the linear scaled measurement backscatter files.
-    overviews: list[int]
-        Internal overview levels to be defined for the created VRT file.
-    overview_resampling: str
-        Resampling method applied to overview pyramids.
-    """
-    # make sure order is right and co-polarization (VV or HH) is first
-    pols = [re.search('[hv]{2}', os.path.basename(f)).group() for f in infiles]
-    if pols[1] in ['vv', 'hh']:
-        infiles.reverse()
-        pols.reverse()
-    
-    # format overview levels
-    ov = str(overviews)
-    for x in ['[', ']', ',']:
-        ov = ov.replace(x, '')
-    
-    # create VRT file and change its content
-    gdalbuildvrt(src=infiles, dst=outname, separate=True)
-    
-    tree = etree.parse(outname)
-    root = tree.getroot()
-    srs = tree.find('SRS').text
-    geotrans = tree.find('GeoTransform').text
-    bands = tree.findall('VRTRasterBand')
-    vrt_nodata = bands[0].find('NoDataValue').text
-    complex_src = [band.find('ComplexSource') for band in bands]
-    for cs in complex_src:
-        cs.remove(cs.find('NODATA'))
-    
-    new_band = etree.SubElement(root, 'VRTRasterBand',
-                                attrib={'dataType': 'Float32', 'band': '3',
-                                        'subClass': 'VRTDerivedRasterBand'})
-    new_band_na = etree.SubElement(new_band, 'NoDataValue')
-    new_band_na.text = 'nan'
-    pxfun_type = etree.SubElement(new_band, 'PixelFunctionType')
-    pxfun_type.text = 'mul'
-    for cs in complex_src:
-        new_band.append(deepcopy(cs))
-    
-    src = new_band.findall('ComplexSource')[1]
-    fname = src.find('SourceFilename')
-    fname_old = fname.text
-    src_attr = src.find('SourceProperties').attrib
-    fname.text = etree.CDATA("""
-    <VRTDataset rasterXSize="{rasterxsize}" rasterYSize="{rasterysize}">
-        <SRS dataAxisToSRSAxisMapping="1,2">{srs}</SRS>
-        <GeoTransform>{geotrans}</GeoTransform>
-        <VRTRasterBand dataType="{dtype}" band="1" subClass="VRTDerivedRasterBand">
-            <NoDataValue>{vrt_nodata}</NoDataValue>
-            <PixelFunctionType>{px_fun}</PixelFunctionType>
-            <ComplexSource>
-              <SourceFilename relativeToVRT="1">{fname}</SourceFilename>
-              <SourceBand>1</SourceBand>
-              <SourceProperties RasterXSize="{rasterxsize}" RasterYSize="{rasterysize}" DataType="{dtype}" BlockXSize="{blockxsize}" BlockYSize="{blockysize}"/>
-              <SrcRect xOff="0" yOff="0" xSize="{rasterxsize}" ySize="{rasterysize}"/>
-              <DstRect xOff="0" yOff="0" xSize="{rasterxsize}" ySize="{rasterysize}"/>
-            </ComplexSource>
-        </VRTRasterBand>
-        <OverviewList resampling="{ov_resampling}">{ov}</OverviewList>
-    </VRTDataset>
-    """.format(rasterxsize=src_attr['RasterXSize'], rasterysize=src_attr['RasterYSize'], srs=srs, geotrans=geotrans,
-               dtype=src_attr['DataType'], px_fun='inv', fname=fname_old, vrt_nodata=vrt_nodata,
-               blockxsize=src_attr['BlockXSize'], blockysize=src_attr['BlockYSize'],
-               ov_resampling=overview_resampling.lower(), ov=ov))
-    
-    bands = tree.findall('VRTRasterBand')
-    for band, col in zip(bands, ['Red', 'Green', 'Blue']):
-        color = etree.Element('ColorInterp')
-        color.text = col
-        band.insert(0, color)
-    
-    ovr = etree.SubElement(root, 'OverviewList', attrib={'resampling': overview_resampling.lower()})
-    ovr.text = ov
-    
-    etree.indent(root)
-    tree.write(outname, pretty_print=True, xml_declaration=False, encoding='utf-8')
 
 
 def create_data_mask(outname, valid_mask_list, src_files, extent, epsg, driver, creation_opt, overviews,

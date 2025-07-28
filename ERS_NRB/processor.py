@@ -23,6 +23,7 @@ gdal.UseExceptions()
 
 from s1ard import dem
 from s1ard.ancillary import generate_unique_id, get_max_ext
+from s1ard.ard import create_rgb_vrt
 from s1ard.tile_extraction import aoi_from_tile
 from s1ard.metadata import stac, xml
 
@@ -349,8 +350,8 @@ def nrb_processing(config, product_type, scenes, datadir, outdir, tile, extent, 
         
         cc_path = re.sub('[hv]{2}', 'cc', measure_paths[0]).replace('.tif', '.vrt')
         cc_path = re.sub('[hv]{2}', 'cc', log_vrts[0])
-        ancil.create_rgb_vrt(outname=cc_path, infiles=measure_paths, overviews=overviews,
-                             overview_resampling=ovr_resampling)
+        create_rgb_vrt(outname=cc_path, infiles=measure_paths, overviews=overviews,
+                       overview_resampling=ovr_resampling)
     ####################################################################################################################
     # metadata
     print("metadata")
