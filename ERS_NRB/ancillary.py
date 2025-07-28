@@ -548,7 +548,7 @@ def _log_process_config(logger, config):
     ====================================================================================================================
     SOFTWARE
 
-    s1ard               {ERS_NRB.__version__}
+    ERS_NRB             {ERS_NRB.__version__}
     snap-core           {snap_core}
     snap-microwavetbx   {snap_microwavetbx}
     python              {sys.version}
