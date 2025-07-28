@@ -6,48 +6,7 @@ from pyproj.aoi import AreaOfInterest
 from pyproj.database import query_utm_crs_info
 from pyproj import Transformer
 
-from s1ard.tile_extraction import aoi_from_tile, description2dict
-
-
-def tiles_from_aoi(vectorobject, kml, epsg=None):
-    """
-    Return a list of unique MGRS tile IDs that overlap with an area of interest (AOI) provided as a vector object.
-    
-    Parameters
-    -------
-    vectorobject: spatialist.vector.Vector
-        The vector object to read.
-    kml: str
-        Path to the Sentinel-2 tiling grid kml file provided by ESA, which can be retrieved from:
-        https://sentinels.copernicus.eu/web/sentinel/missions/sentinel-2/data-products
-    epsg: int or list[int]
-        define which EPSG code(s) are allowed for the tile selection.
-    
-    Returns
-    -------
-    tiles: list[str]
-        A list of unique UTM tile IDs.
-    """
-    if isinstance(epsg, int):
-        epsg = [epsg]
-    with Vector(kml, driver='KML') as vec:
-        tilenames = []
-        vectorobject.layer.ResetReading()
-        for item in vectorobject.layer:
-            geom = item.GetGeometryRef()
-            vec.layer.SetSpatialFilter(geom)
-            for tile in vec.layer:
-                tilename = tile.GetField('Name')
-                if tilename not in tilenames:
-                    attrib = description2dict(tile.GetField('Description'))
-                    if epsg is not None and attrib['EPSG'] not in epsg:
-                        continue
-                    tilenames.append(tilename)
-        vectorobject.layer.ResetReading()
-        tile = None
-        geom = None
-        item = None
-        return sorted(tilenames)
+from s1ard.tile_extraction import aoi_from_tile, tile_from_aoi
 
 
 def main(config, tr):
@@ -73,7 +32,7 @@ def main(config, tr):
         tiles = config['aoi_tiles']
     elif config['aoi_tiles'] is None and config['aoi_geometry'] is not None:
         with Vector(config['aoi_geometry']) as aoi:
-            tiles = tiles_from_aoi(aoi, kml=config['kml_file'])
+            tiles = tile_from_aoi(aoi)
     else:
         raise RuntimeError("Either 'aoi_tiles' or 'aoi_geometry' need to be provided!")
     
