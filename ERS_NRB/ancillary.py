@@ -2,7 +2,6 @@ import os
 import re
 import sys
 import logging
-import binascii
 from time import gmtime, strftime
 from copy import deepcopy
 from datetime import datetime
@@ -13,75 +12,14 @@ from osgeo import gdal
 import spatialist
 from spatialist import gdalbuildvrt, Raster, bbox
 import pyroSAR
-from pyroSAR import identify, examine, identify_many
+from pyroSAR import identify, examine
 import ERS_NRB
 
 log = logging.getLogger('s1ard')
 
 
-def group_by_time(scenes, time=3):
-    """
-    Group scenes by their acquisition time difference.
-    Parameters
-    ----------
-    scenes:list[pyroSAR.drivers.ID or str]
-        a list of image names
-    time: int or float
-        a time difference in seconds by which to group the scenes.
-        The default of 3 seconds incorporates the overlap between SLCs.
-    Returns
-    -------
-    list[list[pyroSAR.drivers.ID]]
-        a list of sub-lists containing the file names of the grouped scenes
-    """
-    # sort images by time stamp
-    scenes = identify_many(scenes, sortkey='start')
-    
-    if len(scenes) < 2:
-        return [scenes]
-    
-    groups = [[scenes[0]]]
-    group = groups[0]
-    
-    for i in range(1, len(scenes)):
-        start = datetime.strptime(scenes[i].start, '%Y%m%dT%H%M%S')
-        stop_pred = datetime.strptime(scenes[i - 1].stop, '%Y%m%dT%H%M%S')
-        diff = (stop_pred - start).total_seconds()
-        if diff <= time:
-            group.append(scenes[i])
-        else:
-            groups.append([scenes[i]])
-            group = groups[-1]
-    return groups
-
-def check_scene_consistency(scenes):
-    """
-    Check the consistency of a scene selection.
-    The following pyroSAR object attributes must be the same:
-    
-     - sensor
-     - acquisition_mode
-     - product
-     - frameNumber (data take ID)
-    
-    Parameters
-    ----------
-    scenes: list[str or pyroSAR.drivers.ID]
-    Returns
-    -------
-    
-    Raises
-    ------
-    RuntimeError
-    """
-    scenes = identify_many(scenes)
-    for attr in ['sensor', 'acquisition_mode', 'product', 'frameNumber']:
-        values = set([getattr(x, attr) for x in scenes])
-        if not len(values) == 1:
-            msg = f"scene selection differs in attribute '{attr}': {values}"
-            raise RuntimeError(msg)
-
-def vrt_pixfun(src, dst, fun, relpaths= None, scale=None, offset=None, args=None, options=None, overviews=None, overview_resampling=None):
+def vrt_pixfun(src, dst, fun, relpaths=None, scale=None, offset=None, args=None,
+               options=None, overviews=None, overview_resampling=None):
     """
     Creates a VRT file for the specified source dataset(s) and adds a pixel function that should be applied on the fly
     when opening the VRT file.
@@ -207,6 +145,7 @@ def vrt_relpath(vrt):
     etree.indent(tree.getroot())
     tree.write(vrt, pretty_print=True, xml_declaration=False, encoding='utf-8')
 
+
 def create_rgb_vrt(outname, infiles, overviews, overview_resampling):
     """
     Creation of the color composite VRT file.
@@ -295,29 +234,6 @@ def create_rgb_vrt(outname, infiles, overviews, overview_resampling):
     tree.write(outname, pretty_print=True, xml_declaration=False, encoding='utf-8')
 
 
-
-def generate_unique_id(encoded_str):
-    """
-    Returns a unique product identifier as a hexa-decimal string generated from the time of execution in isoformat.
-    The CRC-16 algorithm used to compute the unique identifier is CRC-CCITT (0xFFFF).
-    
-    Parameters
-    ----------
-    encoded_str: bytes
-        A string that should be used to generate a unique id from. The string needs to be encoded; e.g.:
-        `'abc'.encode()`
-    
-    Returns
-    -------
-    p_id: str
-        The unique product identifier.
-    """
-    crc = binascii.crc_hqx(encoded_str, 0xffff)
-    p_id = '{:04X}'.format(crc & 0xffff)
-    
-    return p_id
-
-
 def create_data_mask(outname, valid_mask_list, src_files, extent, epsg, driver, creation_opt, overviews,
                      overview_resampling, out_format=None, wbm=None):
     """
@@ -398,7 +314,7 @@ def create_data_mask(outname, valid_mask_list, src_files, extent, epsg, driver, 
             # Add Water Body Mask
             if wbm is not None:
                 with Raster(wbm) as ras_wbm:
-
+                    
                     # Issue 1.1 Gdal somtimes creates an extra pixel, this makes sure that they are the same size
                     arr_wbm = ras_wbm.array()[:rows, :cols]
                     out_arr = np.where((arr_wbm == 1), 4, arr_snap_dm)
@@ -407,7 +323,7 @@ def create_data_mask(outname, valid_mask_list, src_files, extent, epsg, driver, 
                 out_arr = arr_snap_dm
                 dm_bands.pop(4)
             del arr_snap_dm
-        
+            
             # Extend the shadow class of the data mask with nodata values from backscatter data and create final array
             with Raster(vrt_snap_valid)[tile_vec] as ras_snap_valid:
                 with Raster(vrt_snap_gamma0)[tile_vec] as ras_snap_gamma0:
@@ -420,7 +336,6 @@ def create_data_mask(outname, valid_mask_list, src_files, extent, epsg, driver, 
                     out_arr[np.isnan(arr_snap_valid)] = out_nodata
                     del arr_snap_gamma0
                     del arr_snap_valid
-
         
         if out_format == 'multi-layer':
             outname_tmp = '/vsimem/' + os.path.basename(outname) + '.vrt'
@@ -537,40 +452,6 @@ def create_acq_id_image(ref_tif, valid_mask_list, src_scenes, extent, epsg, driv
     with Raster(ref_tif) as ref_ras:
         ref_ras.write(outname, format=driver, array=out_arr.astype('uint8'), nodata=out_nodata, overwrite=True,
                       overviews=overviews, options=creation_opt)
-
-
-def get_max_ext(boxes, buffer=None):
-    """
-    
-    Parameters
-    ----------
-    boxes: list[spatialist.vector.Vector objects]
-        List of vector objects.
-    buffer: float, optional
-        The buffer to apply to the extent.
-    Returns
-    -------
-    max_ext: dict
-        The maximum extent of the selected vector objects including buffer.
-    """
-    max_ext = {}
-    for geo in boxes:
-        if len(max_ext.keys()) == 0:
-            max_ext = geo.extent
-        else:
-            for key in ['xmin', 'ymin']:
-                if geo.extent[key] < max_ext[key]:
-                    max_ext[key] = geo.extent[key]
-            for key in ['xmax', 'ymax']:
-                if geo.extent[key] > max_ext[key]:
-                    max_ext[key] = geo.extent[key]
-    max_ext = dict(max_ext)
-    if buffer is not None:
-        max_ext['xmin'] -= buffer
-        max_ext['xmax'] += buffer
-        max_ext['ymin'] -= buffer
-        max_ext['ymax'] += buffer
-    return max_ext
 
 
 def set_logging(config, debug=False):
