@@ -83,4 +83,28 @@ SAMPLE_MAP = {'-dm.tif': {'type': 'mask',
                              'unit': None,
                              'role': 'noise-power',
                              'title': 'Noise Power HV'}}
-     
+
+URL = {
+    'ancillaryData_KML': 'https://sentinel.esa.int/documents/247904/1955685/S2A_OPER_GIP_TILPAR_MPC__'
+                         '20151209T095117_V20150622T000000_21000101T000000_B00.kml',
+    'card4l_nrb': 'https://ceos.org/ard/files/PFS/NRB/v5.5/CARD4L-PFS_NRB_v5.5.pdf',
+    'card4l_orb': 'https://ceos.org/ard/files/PFS/ORB/v1.0/'
+                  'CARD4L_Product_Family_Specification_Ocean_Radar_Backscatter-v1.0.pdf',
+    'faradayRotationReference': None,
+    'geoCorrAccuracyReference': None,
+    'geoCorrAlgorithm': None,
+    'griddingConventionURL': 'https://www.mgrs-data.org/data/documents/nga_mgrs_doc.pdf',
+    'noiseRemovalAlgorithm': None,
+    'orbitDataAccess': None,
+    'platformReference': {
+        'envisat-1': 'http://database.eohandbook.com/database/missionsummary.aspx?missionID=2',
+        'ers-1': 'http://database.eohandbook.com/database/missionsummary.aspx?missionID=220',
+        'ers-2': 'http://database.eohandbook.com/database/missionsummary.aspx?missionID=221'
+    },
+    'radiometricAccuracyReference': None,
+    'RTCAlgorithm': 'https://doi.org/10.1109/Tgrs.2011.2120616',
+    'sensorCalibration': None,
+    'source_access': 'https://dataspace.copernicus.eu',
+    'source_doi': None,
+    'windNormReferenceModel': None
+}
