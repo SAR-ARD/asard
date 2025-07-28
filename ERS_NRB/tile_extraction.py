@@ -1,4 +1,3 @@
-from lxml import html
 from spatialist.vector import Vector
 from shapely.geometry import box
 from shapely.affinity import scale
@@ -7,7 +6,7 @@ from pyproj.aoi import AreaOfInterest
 from pyproj.database import query_utm_crs_info
 from pyproj import Transformer
 
-from s1ard.tile_extraction import aoi_from_tile
+from s1ard.tile_extraction import aoi_from_tile, description2dict
 
 
 def tiles_from_aoi(vectorobject, kml, epsg=None):
@@ -49,28 +48,6 @@ def tiles_from_aoi(vectorobject, kml, epsg=None):
         geom = None
         item = None
         return sorted(tilenames)
-
-
-def description2dict(description):
-    """
-    convert the HTML description field of the MGRS tile KML file to a dictionary.
-
-    Parameters
-    ----------
-    description: str
-        the plain text of the `Description` field
-
-    Returns
-    -------
-    dict
-        a dictionary with keys 'TILE_ID', 'EPSG', 'MGRS_REF', 'UTM_WKT' and 'LL_WKT'.
-        The value of field 'EPSG' is of type integer, all others are strings.
-    """
-    attrib = html.fromstring(description)
-    attrib = [x for x in attrib.xpath('//tr/td//text()') if x != ' ']
-    attrib = dict(zip(attrib[0::2], attrib[1::2]))
-    attrib['EPSG'] = int(attrib['EPSG'])
-    return attrib
 
 
 def main(config, tr):
@@ -169,6 +146,6 @@ def no_aoi(ids, spacing):
                                           'xmax': xmax,
                                           'ymin': ymin}
         align_dict = {'xmax': max([geo_dict[tile]['xmax'] for tile in list(geo_dict.keys())]),
-                        'ymin': min([geo_dict[tile]['ymin'] for tile in list(geo_dict.keys())])}
-                      
+                      'ymin': min([geo_dict[tile]['ymin'] for tile in list(geo_dict.keys())])}
+    
     return geo_dict, align_dict
