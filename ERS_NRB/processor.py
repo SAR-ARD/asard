@@ -2,7 +2,8 @@ import os
 import re
 import time
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
+from dateutil.parser import parse as dateparse
 from lxml import etree
 import numpy as np
 from osgeo import gdal
@@ -16,15 +17,18 @@ from ERS_NRB.config import get_config, geocode_conf, gdal_conf
 
 import ERS_NRB.ancillary as ancil
 import ERS_NRB.tile_extraction as tile_ex
-from ERS_NRB.metadata import extract, stacparser, xmlparser
+from ERS_NRB.metadata import extract
 
 gdal.UseExceptions()
 
 from s1ard import dem
+from s1ard.ancillary import generate_unique_id, get_max_ext
+from s1ard.tile_extraction import aoi_from_tile
+from s1ard.metadata import stac, xml
 
 
-def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None, multithread=True,
-                   overviews=None, recursive=False):
+def nrb_processing(config, product_type, scenes, datadir, outdir, tile, extent, epsg, wbm=None,
+                   multithread=True, overviews=None, recursive=False, update=False):
     """
     Finalizes the generation of Sentinel-1 NRB products after the main processing steps via `pyroSAR.snap.util.geocode`
     have been executed. This includes the following:
@@ -63,6 +67,12 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
     -------
     None
     """
+    # determine processing timestamp and generate unique ID
+    start_time = time.time()
+    proc_time = datetime.now(timezone.utc)
+    t = proc_time.isoformat().encode()
+    product_id = generate_unique_id(encoded_str=t)
+    
     compress = config['compression']
     if overviews is None:
         overviews = [2, 4, 9, 18, 36]
@@ -112,10 +122,11 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
     
     src_scenes = [i.scene for i in ids]
     
-    product_start = ids[0].meta['SPH_FIRST_LINE_TIME']
-    product_stop = ids[0].meta['SPH_LAST_LINE_TIME']
+    ard_start = ids[0].start
+    ard_stop = ids[0].stop
     meta = {'mission': ids[0].sensor,
             'mode': ids[0].meta['acquisition_mode'],
+            'ard_spec': product_type,
             'polarization': {"['HH']": 'HH',
                              "['VV']": 'VV',
                              "['HH', 'HV']": 'HX',
@@ -124,54 +135,67 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
                              "['HH', 'VV']": 'VC',
                              "['VH', 'VV']": 'VX',
                              "['VV', 'VH']": 'VX'}[str(ids[0].polarizations)],
-            'start': product_start,
+            'start': ard_start,
             'orbitnumber': ids[0].meta['orbitNumber_abs'],
             'datatake': hex(ids[0].meta['frameNumber']).replace('x', '').upper(),
-            'stop': product_stop,
             'tile': tile,
-            'id': 'ABCD'}
-    skeleton = '{mission}_{mode}_NRB__1S{polarization}_{start}_{stop}_{orbitnumber:06}_{datatake:06}_{id}'
+            'id': product_id}
     
-    nrbdir = os.path.join(outdir, skeleton.format(**meta))
-    os.makedirs(nrbdir, exist_ok=True)
+    meta_lower = dict((k, v.lower() if not isinstance(v, int) else v) for k, v in meta.items())
+    skeleton_dir = '{mission}_{mode}_{ard_spec}__1S{polarization}_{start}_{orbitnumber:06}_{datatake:0>6}_{tile}_{id}'
+    skeleton_files = '{mission}-{mode}-{ard_spec}-{start}-{orbitnumber:06}-{datatake:0>6}-{tile}-{suffix}.tif'
     
-    metaL = meta.copy()
-    for key, val in metaL.items():
-        if not isinstance(val, int):
-            metaL[key] = val.lower()
+    ard_base = skeleton_dir.format(**meta)
+    existing = finder(outdir, [ard_base.replace(product_id, '*')], foldermode=2)
+    if len(existing) > 0:
+        if not update:
+            return 'Already processed - Skip!'
+        else:
+            ard_dir = existing[0]
+    else:
+        ard_dir = os.path.join(outdir, ard_base)
+        try:
+            os.makedirs(ard_dir, exist_ok=False)
+        except OSError:
+            return 'Already processed - Skip!'
+    subdirectories = ['measurement', 'annotation', 'source', 'support']
+    for subdirectory in subdirectories:
+        os.makedirs(os.path.join(ard_dir, subdirectory), exist_ok=True)
     
-    skeleton = '{mission}-{mode}-nrb-{start}-{stop}-{orbitnumber:06}-{datatake}-{suffix}.tif'
+    # nrbdir = os.path.join(outdir, skeleton_dir.format(**meta))
+    # os.makedirs(nrbdir, exist_ok=True)
     
     # 'z_error': Maximum error threshold on values for LERC* compression.
     # Will be ignored if a compression algorithm is used that isn't related to LERC.
-    item_map = {'VV_gamma0': {'suffix': 'vv-g-lin',
-                              'z_error': 1e-4},
-                'VH_gamma0': {'suffix': 'vh-g-lin',
-                              'z_error': 1e-4},
-                'HH_gamma0': {'suffix': 'hh-g-lin',
-                              'z_error': 1e-4},
-                'HV_gamma0': {'suffix': 'hv-g-lin',
-                              'z_error': 1e-4},
-                'incidenceAngleFromEllipsoid': {'suffix': 'ei',
-                                                'z_error': 1e-3},
-                'layoverShadowMask': {'suffix': 'dm',
-                                      'z_error': 0, },
-                'localIncidenceAngle': {'suffix': 'li',
-                                        'z_error': 1e-2},
-                'scatteringArea': {'suffix': 'lc',
-                                   'z_error': 0.1},
-                'gammaSigmaRatio': {'suffix': 'gs',
-                                    'z_error': 1e-4},
-                'acquisitionImage': {'suffix': 'id',
-                                     'z_error': 0},
-                'VV_NESZ': {'suffix': 'np-vv',
-                            'z_error': 2e-5},
-                'VH_NESZ': {'suffix': 'np-vh',
-                            'z_error': 2e-5},
-                'HH_NESZ': {'suffix': 'np-hh',
-                            'z_error': 2e-5},
-                'HV_NESZ': {'suffix': 'np-hv',
-                            'z_error': 2e-5}}
+    item_map = {
+        'VV_gamma0': {'suffix': 'vv-g-lin',
+                      'z_error': 1e-4},
+        'VH_gamma0': {'suffix': 'vh-g-lin',
+                      'z_error': 1e-4},
+        'HH_gamma0': {'suffix': 'hh-g-lin',
+                      'z_error': 1e-4},
+        'HV_gamma0': {'suffix': 'hv-g-lin',
+                      'z_error': 1e-4},
+        'incidenceAngleFromEllipsoid': {'suffix': 'ei',
+                                        'z_error': 1e-3},
+        'layoverShadowMask': {'suffix': 'dm',
+                              'z_error': 0, },
+        'localIncidenceAngle': {'suffix': 'li',
+                                'z_error': 1e-2},
+        'scatteringArea': {'suffix': 'lc',
+                           'z_error': 0.1},
+        'gammaSigmaRatio': {'suffix': 'gs',
+                            'z_error': 1e-4},
+        'acquisitionImage': {'suffix': 'id',
+                             'z_error': 0},
+        'VV_NESZ': {'suffix': 'np-vv',
+                    'z_error': 2e-5},
+        'VH_NESZ': {'suffix': 'np-vh',
+                    'z_error': 2e-5},
+        'HH_NESZ': {'suffix': 'np-hh',
+                    'z_error': 2e-5},
+        'HV_NESZ': {'suffix': 'np-hv',
+                    'z_error': 2e-5}}
     
     driver = 'COG'
     ovr_resampling = 'AVERAGE'
@@ -216,13 +240,13 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
             # The data mask will be created later on in the processing workflow.
             continue
         
-        metaL['suffix'] = item_map[key]['suffix']
-        outname_base = skeleton.format(**metaL)
+        meta_lower['suffix'] = item_map[key]['suffix']
+        outname_base = skeleton_files.format(**meta_lower)
         if re.search('_gamma0', key):
             subdir = 'measurement'
         else:
             subdir = 'annotation'
-        outname = os.path.join(nrbdir, subdir, outname_base)
+        outname = os.path.join(ard_dir, subdir, outname_base)
         
         if not os.path.isfile(outname):
             os.makedirs(os.path.dirname(outname), exist_ok=True)
@@ -249,21 +273,14 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
             tree.write(source, pretty_print=True, xml_declaration=False, encoding='utf-8')
             
             snap_nodata = 0
-            gdalwarp(source, outname,
-                     options={'format': driver, 'outputBounds': bounds, 'srcNodata': snap_nodata, 'dstNodata': 'nan',
-                              'multithread': multithread, 'creationOptions': write_options[key]})
-    
-    proc_time = datetime.now()
-    t = proc_time.isoformat().encode()
-    product_id = ancil.generate_unique_id(encoded_str=t)
-    nrbdir_new = nrbdir.replace('ABCD', product_id)
-    os.rename(nrbdir, nrbdir_new)
-    nrbdir = nrbdir_new
+            gdalwarp(src=source, dst=outname, format=driver, outputBounds=bounds,
+                     srcNodata=snap_nodata, dstNodata='nan', multithread=multithread,
+                     creationOptions=write_options[key])
     
     if type(files[0]) == tuple:
         files = [item for tup in files for item in tup]
-    gs_path = finder(nrbdir, [r'gs\.tif$'], regex=True)[0]
-    measure_paths = finder(nrbdir, ['[hv]{2}-g-lin.tif$'], regex=True)
+    gs_path = finder(ard_dir, [r'gs\.tif$'], regex=True)[0]
+    measure_paths = finder(ard_dir, ['[hv]{2}-g-lin.tif$'], regex=True)
     
     # Data mask
     print("Data mask")
@@ -337,13 +354,16 @@ def nrb_processing(config, scenes, datadir, outdir, tile, extent, epsg, wbm=None
     ####################################################################################################################
     # metadata
     print("metadata")
-    nrb_tifs = finder(nrbdir, ['-[a-z]{2,3}.tif'], regex=True, recursive=True)
-    meta = extract.meta_dict(config=config, target=nrbdir, src_scenes=src_scenes, src_files=files, proc_time=proc_time)
-    stacparser.main(meta=meta, target=nrbdir, tifs=nrb_tifs)
-    xmlparser.main(meta=meta, target=nrbdir, tifs=nrb_tifs)
+    nrb_tifs = finder(ard_dir, ['-[a-z]{2,3}.tif'], regex=True, recursive=True)
+    meta = extract.meta_dict(config=config, target=ard_dir, src_ids=ids,
+                             proc_time=proc_time, start=dateparse(ard_start),
+                             stop=dateparse(ard_stop), compression=compress)
+    xml.parse(meta=meta, target=ard_dir, assets=nrb_tifs, exist_ok=True)
+    stac.parse(meta=meta, target=ard_dir, assets=nrb_tifs, exist_ok=True)
 
 
 def main(config_file, section_name):
+    update = True  # update existing products? Internal development flag.
     config = get_config(config_file=config_file, section_name=section_name)
     log = ancil.set_logging(config=config)
     geocode_prms = geocode_conf(config=config)
@@ -404,6 +424,17 @@ def main(config_file, section_name):
     #     print(scene.meta)
     if snap_flag:
         for i, scene in enumerate(ids):
+            scene_base = os.path.splitext(os.path.basename(scene.scene))[0]
+            out_dir_scene = os.path.join(config['out_dir'], scene_base)
+            
+            log.info(f'processing scene {i + 1}/{len(scenes)}: {scene.scene}')
+            if os.path.isdir(out_dir_scene) and not update:
+                log.info('Already processed - Skip!')
+                continue
+            else:
+                os.makedirs(out_dir_scene, exist_ok=True)
+            ########################################################################################################
+            # Preparation of DEM for SAR processing
             fname_dem = os.path.join(config['tmp_dir'], scene.outname_base() + '_DEM.tif')
             if not os.path.isfile(fname_dem):
                 with scene.bbox() as geom:
@@ -411,29 +442,22 @@ def main(config_file, section_name):
                                dem_type=config['dem_type'],
                                username=username, password=password)
             
-            list_processed = finder(config['out_dir'], [scene.start], regex=True, recursive=False)
-            exclude = list(np_dict.values())
             log.info(f'scene {i + 1}/{len(ids)}: {scene.scene}')
-            if len([item for item in list_processed if not any(ex in item for ex in exclude)]) < 3:
-                start_time = time.time()
-                try:
-                    # geocoding_type = 'Range-Doppler'
-                    geocoding_type = 'SAR simulation cross correlation'
-                    geocode(infile=scene, outdir=config['out_dir'], t_srs=epsg, tmpdir=config['tmp_dir'],
-                            standardGridOriginX=align_dict['xmax'], standardGridOriginY=align_dict['ymin'],
-                            externalDEMFile=fname_dem, externalDEMNoDataValue=None,
-                            geocoding_type=geocoding_type, **geocode_prms)
-                    
-                    t = round((time.time() - start_time), 2)
-                    log.info('[GEOCODE] -- {scene} -- {time}'.format(scene=scene.scene, time=t))
-                except Exception as e:
-                    log.error('[GEOCODE] -- {scene} -- {error}'.format(scene=scene.scene, error=e))
-                    print('[GEOCODE] -- {scene} -- {error}'.format(scene=scene.scene, error=e))
-                    return
-            else:
-                msg = 'Already processed - Skip!'
-                print('### ' + msg)
-                log.info('[GEOCODE] -- {scene} -- {msg}'.format(scene=scene.scene, msg=msg))
+            
+            start_time = time.time()
+            try:
+                # geocoding_type = 'Range-Doppler'
+                geocoding_type = 'SAR simulation cross correlation'
+                geocode(infile=scene, outdir=out_dir_scene, t_srs=epsg, tmpdir=config['tmp_dir'],
+                        standardGridOriginX=align_dict['xmax'], standardGridOriginY=align_dict['ymin'],
+                        externalDEMFile=fname_dem, externalDEMNoDataValue=None,
+                        geocoding_type=geocoding_type, **geocode_prms)
+                
+                t = round((time.time() - start_time), 2)
+                log.info('[GEOCODE] -- {scene} -- {time}'.format(scene=scene.scene, time=t))
+            except Exception as e:
+                log.error('[GEOCODE] -- {scene} -- {error}'.format(scene=scene.scene, error=e))
+                return
     
     ####################################################################################################################
     # NRB - final product generation
@@ -443,22 +467,37 @@ def main(config_file, section_name):
         for t, tile in enumerate(aoi_tiles):
             outdir = os.path.join(config['out_dir'], tile)
             os.makedirs(outdir, exist_ok=True)
-            wbm = os.path.join(config['wbm_dir'], config['dem_type'], '{}_WBM.tif'.format(tile))
-            # wbm = fname_wbm
-            if not os.path.isfile(wbm):
-                wbm = None
+            
+            vec = [x.geometry() for x in ids]
+            extent = get_max_ext(geometries=vec)
+            with bbox(coordinates=extent, crs=4326) as box:
+                dem.prepare(vector=box, threads=gdal_prms['threads'],
+                            dem_dir=None, wbm_dir=config['wbm_dir'],
+                            dem_type=config['dem_type'],
+                            tilenames=aoi_tiles, username=username, password=password,
+                            dem_strict=True)
+            # get the geometries of all tiles that overlap with the current scene group
+            tile_vec = aoi_from_tile(tile=tile)
+            del vec
+            fname_wbm = os.path.join(config['wbm_dir'],
+                                     config['dem_type'],
+                                     '{}_WBM.tif'.format(tile_vec.mgrs))
+            if not os.path.isfile(fname_wbm):
+                fname_wbm = None
+            
             for s, scenes in enumerate(selection_grouped):
                 if isinstance(scenes, str):
                     scenes = [scenes]
-                print('###### [NRB] Tile {t}/{t_total}: {tile} | '
-                      'Scenes {s}/{s_total}: {scenes} '.format(tile=tile, t=t + 1, t_total=len(aoi_tiles),
-                                                               scenes=[os.path.basename(s) for s in scenes],
-                                                               s=s + 1, s_total=len(selection_grouped)))
+                log.info('###### [NRB] Tile {t}/{t_total}: {tile} | '
+                         'Scenes {s}/{s_total}: {scenes} '.format(tile=tile, t=t + 1, t_total=len(aoi_tiles),
+                                                                  scenes=[os.path.basename(s) for s in scenes],
+                                                                  s=s + 1, s_total=len(selection_grouped)))
                 start_time = time.time()
                 try:
-                    nrb_processing(config=config, scenes=scenes, datadir=os.path.dirname(outdir), outdir=outdir,
-                                   tile=tile, extent=geo_dict[tile]['ext'], epsg=epsg, wbm=wbm,
-                                   multithread=gdal_prms['multithread'])
+                    nrb_processing(config=config, product_type='NRB', scenes=scenes,
+                                   datadir=os.path.dirname(outdir), outdir=outdir,
+                                   tile=tile, extent=geo_dict[tile]['ext'], epsg=epsg, wbm=fname_wbm,
+                                   multithread=gdal_prms['multithread'], recursive=True, update=update)
                     log.info('[    NRB] -- {scenes} -- {time}'.format(scenes=scenes,
                                                                       time=round((time.time() - start_time), 2)))
                 except Exception as e:
