@@ -16,19 +16,20 @@ from s1ard.metadata.extract import calc_enl, geometry_from_vec, calc_performance
 
 def get_prod_meta(product_id, tif, src_ids, sar_dir):
     """
-    Returns a metadata dictionary, which is generated from the ID of a product scene using a regular expression pattern
-    and from a measurement GeoTIFF file of the same product scene using spatialist's Raster class.
+    Collect ARD product metadata. Items are obtained from parsing the name
+    of the ARD product and from reading a measurement GeoTIFF file of this
+    product.
     
     Parameters
     ----------
     product_id: str
-        The product ID (filename) of the product scene.
+        The product ID (filename) of the ARD product.
     tif: str
-        The paths to a measurement GeoTIFF file of the product scene.
+        The paths to a measurement GeoTIFF file of the ARD product.
     src_ids: list[pyroSAR.drivers.ID]
-        A list source scene objects.
+        The source product object(s).
     sar_dir: str
-        A path pointing to the processed SAR datasets of the product.
+        A path pointing to the processed SAR datasets.
     
     Returns
     -------
@@ -66,31 +67,33 @@ def get_prod_meta(product_id, tif, src_ids, sar_dir):
 
 def meta_dict(config, target, src_ids, proc_time, start, stop, compression):
     """
-    Creates a dictionary containing metadata for a product scene, as well as its source scenes. The dictionary can then
-    be utilized by `metadata.xmlparser` and `metadata.stacparser` to generate XML and STAC JSON metadata files,
-    respectively.
+    Creates a dictionary containing metadata for an ARD product as well as
+    its source products. The dictionary can then be used to parse XML and
+    STAC JSON metadata files, respectively.
     
     Parameters
     ----------
     config: dict
         Dictionary of the parsed config parameters for the current process.
     target: str
-        A path pointing to the root directory of a product scene.
+        A path pointing to the root directory of an ARD product.
     src_ids: list[pyroSAR.drivers.ID]
-        List of :class:`~pyroSAR.drivers.ID` objects of all source scenes that overlap with the current MGRS tile.
+        List of :class:`~pyroSAR.drivers.ID` objects of all source products
+        that overlap with the current MGRS tile.
     proc_time: datetime.datetime
-        The datetime object used to generate the unique product identifier from.
+        The datetime object used to generate the unique product identifier.
     start: datetime.datetime
-        The product start time.
+        The product acquisition start time.
     stop: datetime.datetime
-        The product stop time.
+        The product acquisition stop time.
     compression: str
         The compression type applied to raster files of the product.
     
     Returns
     -------
     meta: dict
-        A dictionary containing an extensive collection of metadata for product as well as source scenes.
+        A dictionary containing an extensive collection of metadata for the
+        ARD product as well as source products.
     """
     
     meta = {'prod': {},
