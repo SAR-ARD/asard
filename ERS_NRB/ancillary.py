@@ -447,7 +447,7 @@ def _log_process_config(logger, config):
     acq_mode            {config['acq_mode']}
 
     work_dir            {config['work_dir']}
-    out_dir             {config['out_dir']}
+    sar_dir             {config['sar_dir']}
     tmp_dir             {config['tmp_dir']}
     wbm_dir             {config['wbm_dir']}
     
