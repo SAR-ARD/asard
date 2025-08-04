@@ -40,7 +40,7 @@ def get_config(config_file, section_name='GENERAL'):
             v = None
         
         if k == 'mode':
-            allowed = ['nrb', 'snap', 'all']
+            allowed = ['nrb', 'sar', 'all']
             assert v in allowed, "Parameter '{}': expected to be one of {}; got '{}' instead".format(k, allowed, v)
             v = v.lower()
         if k == 'aoi_tiles':

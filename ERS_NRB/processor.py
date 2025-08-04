@@ -11,10 +11,10 @@ from spatialist import Raster, Vector, vectorize, boundary, bbox, intersect, ras
 from spatialist.ancillary import finder
 from spatialist.auxil import gdalbuildvrt, gdalwarp
 from pyroSAR import identify_many, Archive
-from pyroSAR.snap.util import geocode
 from pyroSAR.ancillary import find_datasets
 from ERS_NRB.config import get_config, geocode_conf, gdal_conf
 
+from ERS_NRB import snap
 import ERS_NRB.ancillary as ancil
 import ERS_NRB.tile_extraction as tile_ex
 from ERS_NRB.metadata import extract
@@ -22,8 +22,8 @@ from ERS_NRB.metadata import extract
 gdal.UseExceptions()
 
 from s1ard import dem
-from s1ard.ancillary import generate_unique_id, get_max_ext
-from s1ard.ard import create_rgb_vrt
+from s1ard.ancillary import generate_unique_id, get_max_ext, group_by_attr
+from s1ard import ard
 from s1ard.tile_extraction import aoi_from_tile
 from s1ard.metadata import stac, xml
 
@@ -291,7 +291,7 @@ def nrb_processing(config, product_type, scenes, datadir, outdir, tile, extent, 
     dm_path = gs_path.replace('-gs.tif', '-dm.tif')
     with Raster(gs_path) as ras_gs:
         extent = ras_gs.extent
-    ###################################################################################################################    
+    ###################################################################################################################
     ancil.create_data_mask(outname=dm_path, valid_mask_list=snap_dm_tile_overlap, src_files=files,
                            extent=extent, epsg=epsg, driver=driver, creation_opt=write_options['layoverShadowMask'],
                            overviews=overviews, overview_resampling=ovr_resampling, wbm=wbm)
@@ -350,8 +350,8 @@ def nrb_processing(config, product_type, scenes, datadir, outdir, tile, extent, 
         
         cc_path = re.sub('[hv]{2}', 'cc', measure_paths[0]).replace('.tif', '.vrt')
         cc_path = re.sub('[hv]{2}', 'cc', log_vrts[0])
-        create_rgb_vrt(outname=cc_path, infiles=measure_paths, overviews=overviews,
-                       overview_resampling=ovr_resampling)
+        ard.create_rgb_vrt(outname=cc_path, infiles=measure_paths, overviews=overviews,
+                           overview_resampling=ovr_resampling)
     ####################################################################################################################
     # metadata
     print("metadata")
@@ -370,12 +370,12 @@ def main(config_file, section_name):
     geocode_prms = geocode_conf(config=config)
     gdal_prms = gdal_conf(config=config)
     
-    snap_flag = True
+    sar_flag = True
     nrb_flag = True
-    if config['mode'] == 'snap':
+    if config['mode'] == 'sar':
         nrb_flag = False
     elif config['mode'] == 'nrb':
-        snap_flag = False
+        sar_flag = False
     
     username, password = dem.authenticate(dem_type=config['dem_type'],
                                           username=None, password=None)
@@ -404,6 +404,10 @@ def main(config_file, section_name):
                                                                                         mindate=config['mindate'],
                                                                                         maxdate=config['maxdate'],
                                                                                         scene_dir=config['scene_dir']))
+    # group scenes by datatake
+    scenes = identify_many(scenes)
+    scenes_grouped = group_by_attr(scenes, lambda x: x.meta['frameNumber'])
+    
     log.info(f'found {len(selection)} scene(s)')
     ####################################################################################################################
     # geometry and DEM handling
@@ -418,22 +422,41 @@ def main(config_file, section_name):
                            'This is currently not supported. Please refine your AOI.'.format(list(epsg_set)))
     epsg = epsg_set.pop()
     ####################################################################################################################
-    # geocode & noise power - SNAP processing
-    np_dict = {'sigma0': 'NESZ', 'beta0': 'NEBZ', 'gamma0': 'NEGZ'}
-    np_refarea = 'sigma0'
-    # for i, scene in enumerate(ids):
-    #     print(scene.meta)
-    if snap_flag:
+    # annotation layer selection
+    annotation = config['annotation']
+    measurement = 'gamma'
+    export_extra = None
+    lookup = {'dm': 'layoverShadowMask',
+              'ei': 'incidenceAngleFromEllipsoid',
+              'lc': 'scatteringArea',
+              'ld': 'lookDirection',
+              'li': 'localIncidenceAngle',
+              'np': 'NESZ',
+              'gs': 'gammaSigmaRatio',
+              'sg': 'sigmaGammaRatio'}
+    
+    if annotation is not None:
+        annotation = [
+            'gs' if x == 'ratio' and measurement == 'gamma'
+            else 'sg' if x == 'ratio'
+            else x for x in annotation]
+        export_extra = []
+        for layer in annotation:
+            if layer in lookup:
+                export_extra.append(lookup[layer])
+    ####################################################################################################################
+    # main SAR processing
+    if sar_flag:
         for i, scene in enumerate(ids):
             scene_base = os.path.splitext(os.path.basename(scene.scene))[0]
-            out_dir_scene = os.path.join(config['out_dir'], scene_base)
+            sar_dir_scene = os.path.join(config['sar_dir'], scene_base)
             
             log.info(f'processing scene {i + 1}/{len(scenes)}: {scene.scene}')
-            if os.path.isdir(out_dir_scene) and not update:
+            if os.path.isdir(sar_dir_scene) and not update:
                 log.info('Already processed - Skip!')
                 continue
             else:
-                os.makedirs(out_dir_scene, exist_ok=True)
+                os.makedirs(sar_dir_scene, exist_ok=True)
             ########################################################################################################
             # Preparation of DEM for SAR processing
             fname_dem = os.path.join(config['tmp_dir'], scene.outname_base() + '_DEM.tif')
@@ -447,28 +470,26 @@ def main(config_file, section_name):
             
             start_time = time.time()
             try:
-                # geocoding_type = 'Range-Doppler'
-                geocoding_type = 'SAR simulation cross correlation'
-                geocode(infile=scene, outdir=out_dir_scene, t_srs=epsg, tmpdir=config['tmp_dir'],
-                        standardGridOriginX=align_dict['xmax'], standardGridOriginY=align_dict['ymin'],
-                        externalDEMFile=fname_dem, externalDEMNoDataValue=None,
-                        geocoding_type=geocoding_type, **geocode_prms)
-                
+                log.info('starting SNAP processing')
+                snap.process(scene=scene.scene, outdir=config['sar_dir'],
+                             measurement='gamma',
+                             tmpdir=config['tmp_dir'],
+                             dem=fname_dem,
+                             **geocode_prms)
                 t = round((time.time() - start_time), 2)
-                log.info('[GEOCODE] -- {scene} -- {time}'.format(scene=scene.scene, time=t))
+                log.info(f'SNAP processing finished in {t} seconds')
             except Exception as e:
-                log.error('[GEOCODE] -- {scene} -- {error}'.format(scene=scene.scene, error=e))
-                return
-    
+                log.error(msg=e)
+                raise
     ####################################################################################################################
     # NRB - final product generation
     if nrb_flag:
         # selection_grouped = groupbyTime(images=selection, function=seconds, time=60)
         selection_grouped = selection
         for t, tile in enumerate(aoi_tiles):
-            outdir = os.path.join(config['out_dir'], tile)
+            outdir = os.path.join(config['ard_dir'], tile)
             os.makedirs(outdir, exist_ok=True)
-            
+
             vec = [x.geometry() for x in ids]
             extent = get_max_ext(geometries=vec)
             with bbox(coordinates=extent, crs=4326) as box:
@@ -485,7 +506,7 @@ def main(config_file, section_name):
                                      '{}_WBM.tif'.format(tile_vec.mgrs))
             if not os.path.isfile(fname_wbm):
                 fname_wbm = None
-            
+
             for s, scenes in enumerate(selection_grouped):
                 if isinstance(scenes, str):
                     scenes = [scenes]
@@ -504,9 +525,8 @@ def main(config_file, section_name):
                 except Exception as e:
                     log.exception('[    NRB] -- {scenes} -- {error}'.format(scenes=scenes, error=e))
                     continue
-        
-        gdal.SetConfigOption('GDAL_NUM_THREADS', gdal_prms['threads_before'])
 
+        gdal.SetConfigOption('GDAL_NUM_THREADS', gdal_prms['threads_before'])
 
 if __name__ == '__main__':
     main(config_file='config.ini', section_name='GENERAL')
