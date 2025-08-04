@@ -28,8 +28,8 @@ def get_config(config_file, section_name='GENERAL'):
     parser.read(config_file)
     parser_sec = parser[section_name]
     
-    allowed_keys = ['mode', 'mindate', 'maxdate', 'acq_mode', 'aoi_tiles', 'aoi_geometry', 'kml_file',
-                    'work_dir', 'scene_dir', 'out_dir', 'tmp_dir', 'wbm_dir',
+    allowed_keys = ['mode', 'mindate', 'maxdate', 'acq_mode', 'annotation', 'aoi_tiles', 'aoi_geometry', 'ard_dir', 'kml_file',
+                    'work_dir', 'scene_dir', 'sar_dir', 'tmp_dir', 'wbm_dir',
                     'db_file', 'dem_type', 'gdal_threads', 'compression', 'logfile']
     out_dict = {}
     for k, v in parser_sec.items():
@@ -78,7 +78,7 @@ def get_config(config_file, section_name='GENERAL'):
         out_dict['compression']
     except:
         out_dict['compression'] = 'LZW'
-
+    
     assert any([out_dict[k] is not None for k in ['aoi_tiles', 'aoi_geometry']])
     
     return out_dict
