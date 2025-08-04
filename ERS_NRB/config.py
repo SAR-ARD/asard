@@ -134,23 +134,17 @@ def geocode_conf(config):
     dict
         Dictionary of parameters that can be passed to `pyroSAR.snap.util.geocode`
     """
-    return {'spacing': {'IMM': 75, 
+    return {'spacing': {'IMM': 75,
                         'IMP': 12.5,
                         'APP': 12.5,
                         'IMS': 12.5,
                         'WSM': 75}[config['acq_mode']],
-            'scaling': 'linear',
-            'groupsize': 1,
-            'allow_RES_OSV': True,
-            'alignToStandardGrid': True,
             'export_extra': ['localIncidenceAngle', 'incidenceAngleFromEllipsoid',
                              'scatteringArea', 'layoverShadowMask', 'gammaSigmaRatio'],
-            'refarea': ['sigma0', 'gamma0'],
-            'externalDEMApplyEGM': False,
-            'demResamplingMethod': 'BILINEAR_INTERPOLATION',
+            'dem_resampling_method': 'BILINEAR_INTERPOLATION',
+            'img_resampling_method': 'BILINEAR_INTERPOLATION',
             'clean_edges': True,
-            'clean_edges_npixels': 3,
-            'test': False,
+            'clean_edges_pixels': 4,
             'cleanup': False
             }
 
