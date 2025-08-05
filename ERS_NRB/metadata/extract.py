@@ -8,13 +8,13 @@ from spatialist.raster import rasterize
 
 import ERS_NRB
 from ERS_NRB import snap
-from ERS_NRB.metadata.mapping import ARD_PATTERN, ORB_MAP, NOISE_MAP, URL
+from ERS_NRB.metadata.mapping import ORB_MAP, NOISE_MAP, URL
 
 from s1ard.metadata.mapping import DEM_MAP, URL, LERC_ERR_THRES
 from s1ard.metadata.extract import calc_enl, geometry_from_vec, calc_performance_estimates, _vec_from_srccoords
 
 
-def get_prod_meta(product_id, tif, src_ids, sar_dir):
+def get_prod_meta(tif, src_ids, sar_dir):
     """
     Collect ARD product metadata. Items are obtained from parsing the name
     of the ARD product and from reading a measurement GeoTIFF file of this
@@ -22,8 +22,6 @@ def get_prod_meta(product_id, tif, src_ids, sar_dir):
     
     Parameters
     ----------
-    product_id: str
-        The product ID (filename) of the ARD product.
     tif: str
         The paths to a measurement GeoTIFF file of the ARD product.
     src_ids: list[pyroSAR.drivers.ID]
@@ -36,7 +34,7 @@ def get_prod_meta(product_id, tif, src_ids, sar_dir):
     dict
         A dictionary containing metadata for the product scene.
     """
-    out = re.match(re.compile(ARD_PATTERN), product_id).groupdict()
+    out = dict()
     coord_list = [src.meta['coordinates'] for src in src_ids]
     
     with Raster(tif) as ras:
@@ -65,7 +63,7 @@ def get_prod_meta(product_id, tif, src_ids, sar_dir):
     return out
 
 
-def meta_dict(config, target, src_ids, proc_time, start, stop, compression):
+def meta_dict(config, prod_meta, target, src_ids, compression):
     """
     Creates a dictionary containing metadata for an ARD product as well as
     its source products. The dictionary can then be used to parse XML and
@@ -100,11 +98,9 @@ def meta_dict(config, target, src_ids, proc_time, start, stop, compression):
             'source': {},
             'common': {}}
     
-    product_id = os.path.basename(target)
     ref_tif = finder(target, ['[hv]{2}-g-lin.tif$'], regex=True)[0]
     np_tifs = finder(target, ['-np-[hv]{2}.tif$'], regex=True)
-    prod_meta = get_prod_meta(product_id=product_id, tif=ref_tif, src_ids=src_ids,
-                              sar_dir=config['out_dir'])
+    prod_meta.update(get_prod_meta(tif=ref_tif, src_ids=src_ids, sar_dir=config['sar_dir']))
     op_mode = prod_meta['mode']
     
     src_sid = {}
@@ -146,7 +142,7 @@ def meta_dict(config, target, src_ids, proc_time, start, stop, compression):
                                                         meta['common']['platformIdentifier'].lower())
     meta['common']['platformReference'] = URL['platformReference'][meta['common']['platformFullname']]
     meta['common']['polarisationChannels'] = sid0.polarizations
-    meta['common']['polarisationMode'] = prod_meta['pols']
+    meta['common']['polarisationMode'] = prod_meta['polarization']
     meta['common']['processingLevel'] = 'L1C'
     meta['common']['radarBand'] = 'C'
     meta['common']['radarCenterFreq'] = 5300000000
@@ -204,11 +200,11 @@ def meta_dict(config, target, src_ids, proc_time, start, stop, compression):
     meta['prod']['geom_stac_bbox_4326'] = prod_meta['geom']['bbox']
     meta['prod']['geom_stac_geometry_4326'] = prod_meta['geom']['geometry']
     meta['prod']['geom_xml_center'] = prod_meta['geom']['center']
-    meta['prod']['geom_xml_envelope'] = prod_meta['geom']['envelop']
+    meta['prod']['geom_xml_envelope'] = prod_meta['geom']['envelope']
     meta['prod']['griddingConvention'] = 'Military Grid Reference System (MGRS)'
     meta['prod']['griddingConventionURL'] = URL['griddingConventionURL']
     meta['prod']['licence'] = None
-    meta['prod']['mgrsID'] = prod_meta['mgrsID']
+    meta['prod']['mgrsID'] = prod_meta['tile']
     meta['prod']['noiseRemovalApplied'] = NOISE_MAP[sid0.acquisition_mode]
     meta['prod']['noiseRemovalAlgorithm'] = URL['noiseRemovalAlgorithm']
     meta['prod']['numberOfAcquisitions'] = str(len(src_ids))
@@ -235,9 +231,9 @@ def meta_dict(config, target, src_ids, proc_time, start, stop, compression):
     meta['prod']['RTCAlgorithm'] = URL['RTCAlgorithm']
     meta['prod']['speckleFilterApplied'] = False
     meta['prod']['status'] = 'PROTOTYPE'
-    meta['prod']['timeCreated'] = proc_time
-    meta['prod']['timeStart'] = start
-    meta['prod']['timeStop'] = stop
+    meta['prod']['timeCreated'] = prod_meta['start']
+    meta['prod']['timeStart'] = prod_meta['start']
+    meta['prod']['timeStop'] = prod_meta['stop']
     meta['prod']['transform'] = prod_meta['transform']
     # meta['prod']['wrsLongitudeGrid'] = str(meta['common']['orbitNumbers_rel'])
     
@@ -285,7 +281,7 @@ def meta_dict(config, target, src_ids, proc_time, start, stop, compression):
         meta['source'][uid]['perfPeakSideLobeRatio'] = None
         meta['source'][uid]['polCalMatrices'] = None
         meta['source'][uid]['processingCenter'] = src_sid[uid].meta['origin']['MPH']['PROC_CENTER']
-        proc_time = dateparse(src_sid[uid].meta['origin']['MPH']['PROC_TIME'])
+        proc_time = src_sid[uid].meta['origin']['MPH']['PROC_TIME']
         meta['source'][uid]['processingDate'] = proc_time
         meta['source'][uid]['processingLevel'] = 'Level 1'
         meta['source'][uid]['processingMode'] = 'NOMINAL'
