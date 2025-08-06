@@ -411,6 +411,11 @@ def set_logging(config, debug=False):
     log_pyro.setLevel(level)
     log_pyro.addHandler(handler)
     
+    # add s1ard logger
+    log_s1ard = logging.getLogger('s1ard')
+    log_s1ard.setLevel(level)
+    log_s1ard.addHandler(handler)
+    
     return logger
 
 
