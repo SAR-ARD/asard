@@ -3,13 +3,13 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - gdal>=3.4.1
-  - click
+  - click>=7.1.0
+  - gdal>=3.5.0
   - lxml
   - pip
-  - pystac
-  - scipy
-  - pyroSAR=0.19.0
-  - rsgislib
   - pyproj
+  - pyroSAR>=0.30.0
+  - pystac>=1.8.0,<1.11.0
+  - scipy
   - shapely
+  - spatialist>=0.15.2

@@ -3,18 +3,17 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python>=3.8
+  - click>=7.1.0
   - gdal>=3.5.0
-  - click
   - lxml
-  - pystac
+  - pip
+  - pyproj
+  - pyroSAR>=0.30.0
+  - pystac>=1.8.0,<1.11.0
   - scipy
+  - shapely
+  - spatialist>=0.15.2
   - sphinx<=6.2.1
   - sphinxcontrib-bibtex>=2.2
   - nbsphinx
   - sphinx_rtd_theme
-  - pyroSAR>=0.19.0
-  - rsgislib
-  - pyproj
-  - shapely
-  - spatialist>=0.12.0
