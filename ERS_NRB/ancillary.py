@@ -453,7 +453,6 @@ def _log_process_config(logger, config):
     
     scene_dir           {config['scene_dir']}
     db_file             {config['db_file']}
-    kml_file            {config['kml_file']}
     dem_type            {config['dem_type']}
     gdal_threads        {config['gdal_threads']}
 
