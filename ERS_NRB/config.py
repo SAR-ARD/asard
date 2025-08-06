@@ -169,7 +169,8 @@ def _val_cleanup(val):
 
 def geocode_conf(config):
     """
-    Returns a dictionary of additional parameters for `pyroSAR.snap.util.geocode` based on processing configurations
+    Returns a dictionary of additional parameters for
+    `pyroSAR.snap.util.geocode` based on processing configurations
     provided by the config file.
     
     Parameters
@@ -182,11 +183,9 @@ def geocode_conf(config):
     dict
         Dictionary of parameters that can be passed to `pyroSAR.snap.util.geocode`
     """
-    return {'spacing': {'IMM': 75,
-                        'IMP': 12.5,
-                        'APP': 12.5,
-                        'IMS': 12.5,
-                        'WSM': 75}[config['processing']['acq_mode']],
+    return {'spacing': {'AP': 10,
+                        'IM': 10,
+                        'WS': 60}[config['processing']['acq_mode'][:2]],
             'export_extra': ['localIncidenceAngle', 'incidenceAngleFromEllipsoid',
                              'scatteringArea', 'layoverShadowMask', 'gammaSigmaRatio'],
             'dem_resampling_method': 'BILINEAR_INTERPOLATION',
