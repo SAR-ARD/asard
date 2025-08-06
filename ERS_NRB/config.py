@@ -4,6 +4,29 @@ from datetime import datetime
 from osgeo import gdal
 
 
+def get_keys(section):
+    """
+    get all allowed configuration keys
+
+    Parameters
+    ----------
+    section: {'processing'}
+        the configuration section to get the allowed keys for.
+
+    Returns
+    -------
+    list[str]
+        a list of keys
+    """
+    if section == 'processing':
+        return ['acq_mode', 'annotation', 'aoi_geometry', 'aoi_tiles', 'ard_dir',
+                'compression', 'db_file', 'dem_type', 'gdal_threads', 'logfile',
+                'maxdate', 'mindate', 'mode', 'sar_dir', 'scene_dir', 'tmp_dir',
+                'wbm_dir', 'work_dir']
+    else:
+        raise RuntimeError(f"unknown section: {section}. Options: 'processing'.")
+
+
 def get_config(config_file):
     """Returns the content of a config file as a dictionary.
     
@@ -27,9 +50,7 @@ def get_config(config_file):
     parser.read(config_file)
     parser_sec = parser['PROCESSING']
     
-    allowed_keys = ['mode', 'mindate', 'maxdate', 'acq_mode', 'annotation', 'aoi_tiles', 'aoi_geometry', 'ard_dir', 'kml_file',
-                    'work_dir', 'scene_dir', 'sar_dir', 'tmp_dir', 'wbm_dir',
-                    'db_file', 'dem_type', 'gdal_threads', 'compression', 'logfile']
+    allowed_keys = get_keys('processing')
     out_dict = {}
     for k, v in parser_sec.items():
         if k not in allowed_keys:
