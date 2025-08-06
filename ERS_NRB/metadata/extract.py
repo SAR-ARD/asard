@@ -128,7 +128,7 @@ def meta_dict(config, prod_meta, src_ids, compression):
         raise ValueError('Unknown sensor type')
     meta['common']['antennaLookDirection'] = 'RIGHT'
     meta['common']['constellation'] = constellation
-    meta['common']['instrumentShortName'] = {'ERS1': 'AMI', 'ERS2': 'AMI', 'ASAR': 'ASAR'}[sid0.sensor]
+    meta['common']['instrumentShortName'] = {'ERS1': 'SAR', 'ERS2': 'SAR', 'ASAR': 'ASAR'}[sid0.sensor]
     meta['common']['operationalMode'] = op_mode
     meta['common']['orbitDirection'] = {'A': 'ascending', 'D': 'descending'}[sid0.orbit]
     meta['common']['orbitMeanAltitude'] = '{:.2e}'.format(693000)
