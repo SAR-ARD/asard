@@ -37,21 +37,29 @@ def main(config_file, section_name):
     
     ####################################################################################################################
     # archive / scene selection
-    scenesERS = finder(config['scene_dir'], [r'^SAR.*\.E[12]'], regex=True, recursive=True)
-    scenesENVI = finder(config['scene_dir'], [r'^ASA.*\.N1'], regex=True, recursive=True)
     
-    scenes = scenesERS + scenesENVI
-    if not os.path.isfile(config['db_file']):
-        config['db_file'] = os.path.join(config['work_dir'], config['db_file'])
+    db_file_set = config['db_file'] is not None
+    scene_dir_set = config['scene_dir'] is not None
     
-    with Archive(dbfile=config['db_file']) as archive:
-        archive.insert(scenes)
+    if db_file_set:
+        if not os.path.isfile(config['db_file']):
+            config['db_file'] = os.path.join(config['work_dir'], config['db_file'])
+        archive = Archive(dbfile=config['db_file'])
+        if scene_dir_set:
+            scenes = finder(target=config['scene_dir'],
+                            matchlist=[r'^SAR.*\.E[12]', r'^ASA.*\.N1'],
+                            regex=True, recursive=True, foldermode=1)
+            archive.insert(scenes)
+        
         product = 'PRI'
-        if config['acq_mode'] in ['IMS']:
+        if config['acq_mode'].endswith('S'):
             product = 'SLC'
         selection = archive.select(product=product,
                                    acquisition_mode=config['acq_mode'],
                                    mindate=config['mindate'], maxdate=config['maxdate'])
+        archive.close()
+    else:
+        raise RuntimeError("parameter 'db_file' is not set")
     
     if len(selection) == 0:
         msg = ("No scenes could be found for acquisition mode '{acq_mode}', "
@@ -60,9 +68,10 @@ def main(config_file, section_name):
                                       mindate=config['mindate'],
                                       maxdate=config['maxdate'],
                                       scene_dir=config['scene_dir']))
-    # group scenes by datatake
-    scenes = identify_many(scenes)
-    scenes_grouped = group_by_attr(scenes, lambda x: x.meta['frameNumber'])
+    
+    # group scenes by absolute orbit number
+    scenes = identify_many(selection)
+    scenes_grouped = group_by_attr(scenes, lambda x: x.meta['orbitNumber_abs'])
     
     log.info(f'found {len(selection)} scene(s)')
     ####################################################################################################################
