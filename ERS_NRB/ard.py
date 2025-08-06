@@ -1,9 +1,12 @@
 import os
+import re
 import shutil
 from copy import deepcopy
 from datetime import datetime, timezone
+from spatialist.ancillary import finder
 import ERS_NRB
 from ERS_NRB.metadata.extract import meta_dict
+from ERS_NRB.metadata.mapping import ARD_PATTERN
 from s1ard.ard import calc_product_start_stop, generate_unique_id
 from s1ard.metadata import xml, stac
 import logging
@@ -11,14 +14,12 @@ import logging
 log = logging.getLogger('s1ard')
 
 
-def append_metadata(target, config, prod_meta, src_ids, assets, compression):
+def append_metadata(config, prod_meta, src_ids, assets, compression):
     """
     Append metadata files to an ARD product.
 
     Parameters
     ----------
-    target: str
-        the path to the ARD product
     config: dict
         the configuration dictionary
     prod_meta: dict
@@ -35,7 +36,7 @@ def append_metadata(target, config, prod_meta, src_ids, assets, compression):
 
     """
     # extract metadata
-    meta = meta_dict(config=config, prod_meta=prod_meta, target=target,
+    meta = meta_dict(config=config, prod_meta=prod_meta,
                      src_ids=src_ids, compression=compression)
     
     # copy support files
@@ -44,17 +45,18 @@ def append_metadata(target, config, prod_meta, src_ids, assets, compression):
         schemas = os.listdir(schema_dir)
         for schema in schemas:
             schema_in = os.path.join(schema_dir, schema)
-            schema_out = os.path.join(target, 'support', schema)
+            schema_out = os.path.join(prod_meta['ard_dir'], 'support', schema)
             if not os.path.isfile(schema_out):
                 log.info(f'creating {schema_out}')
                 shutil.copy(schema_in, schema_out)
     
     # create metadata files
-    xml.parse(meta=meta, target=target, assets=assets, exist_ok=True)
-    stac.parse(meta=meta, target=target, assets=assets, exist_ok=True)
+    xml.parse(meta=meta, target=prod_meta['ard_dir'], assets=assets, exist_ok=True)
+    stac.parse(meta=meta, target=prod_meta['ard_dir'], assets=assets, exist_ok=True)
 
 
-def product_info(product_type, src_ids, tile_id, extent, epsg):
+def product_info(product_type, src_ids, tile_id, extent, epsg,
+                 dir_out, update=False, product_id=None):
     """
     Create ARD product metadata.
 
@@ -78,8 +80,9 @@ def product_info(product_type, src_ids, tile_id, extent, epsg):
     """
     # determine processing timestamp and generate unique ID
     proc_time = datetime.now(timezone.utc)
-    t = proc_time.isoformat().encode()
-    product_id = generate_unique_id(encoded_str=t, length=3)
+    if product_id is None:
+        t = proc_time.isoformat().encode()
+        product_id = generate_unique_id(encoded_str=t, length=3)
     
     sensor = src_ids[0].sensor
     acquisition_mode = src_ids[0].acquisition_mode
@@ -131,5 +134,25 @@ def product_info(product_type, src_ids, tile_id, extent, epsg):
                       '{orbitnumber_rel:x}-S{id}-{phase}{cycle}-{polarization}')
     
     meta['product_base'] = skeleton_dir.format(**meta_name)
+    meta['dir_ard'] = os.path.join(dir_out, meta['product_base'])
     meta['file_base'] = skeleton_files.format(**meta_name_lower) + '-{suffix}.tif'
+    
+    # check existence of products
+    msg = 'Already processed - Skip!'
+    pattern = meta['product_base'].replace(product_id, '*')
+    existing = finder(dir_out, [pattern], foldermode=2)
+    if len(existing) > 0:
+        if not update:
+            raise RuntimeError(msg)
+        else:
+            existing_meta = re.search(ARD_PATTERN, os.path.basename(existing[0])).groupdict()
+            product_info(product_type=product_type, src_ids=src_ids,
+                         tile_id=tile_id, extent=extent, epsg=epsg,
+                         dir_out=dir_out, update=update,
+                         product_id=existing_meta['id'])
+    else:
+        try:
+            os.makedirs(meta['dir_ard'], exist_ok=False)
+        except OSError:
+            raise RuntimeError(msg)
     return meta

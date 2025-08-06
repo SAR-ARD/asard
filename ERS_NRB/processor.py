@@ -14,7 +14,7 @@ from ERS_NRB.ard import product_info, append_metadata
 gdal.UseExceptions()
 
 from s1ard import dem
-from s1ard.ard import check_status, format, get_datasets
+from s1ard.ard import format, get_datasets
 from s1ard.ancillary import get_max_ext, group_by_attr
 
 
@@ -187,19 +187,15 @@ def main(config_file):
                 epsg = tile.getProjection('epsg')
                 log.info(f'creating product {t + 1}/{t_total}')
                 log.info(f'selected scene(s): {scenes_sub_fnames}')
-                prod_meta = product_info(product_type=product_type, src_ids=scenes_sub,
-                                         tile_id=tile.mgrs, extent=extent, epsg=epsg)
-                log.info(f'product name: {os.path.join(outdir, prod_meta["product_base"])}')
-                
                 try:
-                    dir_ard = check_status(dir_out=outdir,
-                                           product_base=prod_meta["product_base"],
-                                           product_id=prod_meta["id"],
-                                           update=update)
+                    prod_meta = product_info(product_type=product_type, src_ids=scenes_sub,
+                                             tile_id=tile.mgrs, extent=extent, epsg=epsg,
+                                             dir_out=outdir)
                 except RuntimeError:
                     log.info('Already processed - Skip!')
                     del tiles
                     return
+                log.info(f'product name: {os.path.join(outdir, prod_meta["product_base"])}')
                 try:
                     src_ids, sar_assets = get_datasets(scenes=scenes_sub_fnames,
                                                        sar_dir=config_proc['sar_dir'],
@@ -207,11 +203,11 @@ def main(config_file):
                     
                     ard_assets = format(config=config, prod_meta=prod_meta,
                                         src_ids=src_ids, sar_assets=sar_assets,
-                                        dir_ard=dir_ard, tile=tile.mgrs, extent=extent, epsg=epsg,
+                                        tile=tile.mgrs, extent=extent, epsg=epsg,
                                         wbm=fname_wbm, dem_type=dem_type, compress='LERC_ZSTD',
                                         multithread=gdal_prms['multithread'], annotation=annotation)
                     
-                    append_metadata(target=dir_ard, config=config, prod_meta=prod_meta,
+                    append_metadata(config=config, prod_meta=prod_meta,
                                     src_ids=src_ids, assets=ard_assets, compression='LERC_ZSTD')
                 except Exception as e:
                     log.error(msg=e)

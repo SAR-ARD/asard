@@ -63,7 +63,7 @@ def get_prod_meta(tif, src_ids, sar_dir):
     return out
 
 
-def meta_dict(config, prod_meta, target, src_ids, compression):
+def meta_dict(config, prod_meta, src_ids, compression):
     """
     Creates a dictionary containing metadata for an ARD product as well as
     its source products. The dictionary can then be used to parse XML and
@@ -98,8 +98,8 @@ def meta_dict(config, prod_meta, target, src_ids, compression):
             'source': {},
             'common': {}}
     
-    ref_tif = finder(target, ['[hv]{2}-g-lin.tif$'], regex=True)[0]
-    np_tifs = finder(target, ['-np-[hv]{2}.tif$'], regex=True)
+    ref_tif = finder(prod_meta['ard_dir'], ['[hv]{2}-g-lin.tif$'], regex=True)[0]
+    np_tifs = finder(prod_meta['ard_dir'], ['-np-[hv]{2}.tif$'], regex=True)
     prod_meta.update(get_prod_meta(tif=ref_tif, src_ids=src_ids, sar_dir=config['sar_dir']))
     op_mode = prod_meta['mode']
     
