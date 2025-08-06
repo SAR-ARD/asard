@@ -1,15 +1,16 @@
-ARD_PATTERN = r'^(?P<sensor>ERS[12]|ASAR)_' \
-              r'(?P<mode>IMP|IMM|APP|IMS|WSM)_' \
+ARD_PATTERN = r'^(?P<mission>ER[12]|ENV)' \
+              r'(?P<sensor>A|S)' \
+              r'(?P<mode>IM|AP|WS)' \
               r'(?P<product>NRB)_' \
-              r'(?P<resolution>_)' \
-              r'(?P<processingLevel>1)' \
-              r'(?P<category>S)' \
-              r'(?P<pols>HH|VV|HX|VC|VX)_' \
               r'(?P<start>[0-9]{8}T[0-9]{6})_' \
-              r'(?P<orbitNumber>[0-9]{6})_' \
-              r'(?P<dataTakeID>[0-9A-F]{6})_' \
-              r'(?P<mgrsID>[0-9A-Z]{5})_' \
-              r'(?P<ID>[0-9A-Z]{4})'
+              r'(?P<duration>[0-9]{4})_' \
+              r'(?P<platform>_)' \
+              r'(?P<rel_orbit>[0-9A-Z]{3})_' \
+              r'(?P<aux_data_level>S)' \
+              r'(?P<id>[0-9A-Z]{3})_' \
+              r'(?P<phase>[0-9A-Z]{1})' \
+              r'(?P<cycle>[0-9]{3})_' \
+              r'(?P<pols>DH|DV|SH|SV)'
 
 # Envisat
 # FP = FOS predicted orbit state vectors (NRT processing)
