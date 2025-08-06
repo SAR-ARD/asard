@@ -79,7 +79,7 @@ def product_info(product_type, src_ids, tile_id, extent, epsg):
     # determine processing timestamp and generate unique ID
     proc_time = datetime.now(timezone.utc)
     t = proc_time.isoformat().encode()
-    product_id = generate_unique_id(encoded_str=t)
+    product_id = generate_unique_id(encoded_str=t, length=3)
     
     sensor = src_ids[0].sensor
     acquisition_mode = src_ids[0].acquisition_mode
@@ -125,9 +125,9 @@ def product_info(product_type, src_ids, tile_id, extent, epsg):
     del meta_name['stop']
     meta_name_lower = dict((k, v.lower() if isinstance(v, str) else v)
                            for k, v in meta_name.items())
-    skeleton_dir = ('{mission}{sensor}{mode}{product_type}_{start}_{duration}__'
+    skeleton_dir = ('{mission}{sensor}{mode}{product_type}_{start}_{duration:04}__'
                     '{orbitnumber_rel:X}_S{id}_{phase}{cycle}_{polarization}')
-    skeleton_files = ('{mission}{sensor}{mode}{product_type}-{start}-{duration}--'
+    skeleton_files = ('{mission}{sensor}{mode}{product_type}-{start}-{duration:04}--'
                       '{orbitnumber_rel:x}-S{id}-{phase}{cycle}-{polarization}')
     
     meta['product_base'] = skeleton_dir.format(**meta_name)
