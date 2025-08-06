@@ -98,9 +98,9 @@ def meta_dict(config, prod_meta, src_ids, compression):
             'source': {},
             'common': {}}
     
-    ref_tif = finder(prod_meta['ard_dir'], ['[hv]{2}-g-lin.tif$'], regex=True)[0]
-    np_tifs = finder(prod_meta['ard_dir'], ['-np-[hv]{2}.tif$'], regex=True)
-    prod_meta.update(get_prod_meta(tif=ref_tif, src_ids=src_ids, sar_dir=config['sar_dir']))
+    ref_tif = finder(prod_meta['dir_ard'], ['[hv]{2}-g-lin.tif$'], regex=True)[0]
+    np_tifs = finder(prod_meta['dir_ard'], ['-np-[hv]{2}.tif$'], regex=True)
+    prod_meta.update(get_prod_meta(tif=ref_tif, src_ids=src_ids, sar_dir=config['processing']['sar_dir']))
     op_mode = prod_meta['mode']
     
     src_sid = {}
@@ -113,7 +113,7 @@ def meta_dict(config, prod_meta, src_ids, compression):
     # manifest0 = src_xml[src0]['manifest']
     # nsmap0 = src_xml[src0]['manifest'].nsmap
     
-    dem_name = config['dem_type']
+    dem_name = config['processing']['dem_type']
     dem_ref = DEM_MAP[dem_name]['ref']
     dem_type = DEM_MAP[dem_name]['type']
     dem_egm = DEM_MAP[dem_name]['egm']
@@ -165,10 +165,10 @@ def meta_dict(config, prod_meta, src_ids, compression):
     meta['prod']['compression_zerrors'] = LERC_ERR_THRES
     meta['prod']['crsEPSG'] = str(prod_meta['epsg'])
     meta['prod']['crsWKT'] = prod_meta['wkt']
-    meta['prod']['demAccess'] = DEM_MAP[config['dem_type']]['access']
-    meta['prod']['demEGMReference'] = DEM_MAP[config['dem_type']]['egm']
+    meta['prod']['demAccess'] = DEM_MAP[config['processing']['dem_type']]['access']
+    meta['prod']['demEGMReference'] = DEM_MAP[config['processing']['dem_type']]['egm']
     meta['prod']['demEGMResamplingMethod'] = 'bilinear'
-    meta['prod']['demGSD'] = DEM_MAP[config['dem_type']]['gsd']
+    meta['prod']['demGSD'] = DEM_MAP[config['processing']['dem_type']]['gsd']
     meta['prod']['demName'] = dem_name
     meta['prod']['demReference'] = dem_ref
     meta['prod']['demResamplingMethod'] = 'bilinear'

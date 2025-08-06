@@ -45,14 +45,14 @@ def append_metadata(config, prod_meta, src_ids, assets, compression):
         schemas = os.listdir(schema_dir)
         for schema in schemas:
             schema_in = os.path.join(schema_dir, schema)
-            schema_out = os.path.join(prod_meta['ard_dir'], 'support', schema)
+            schema_out = os.path.join(prod_meta['dir_ard'], 'support', schema)
             if not os.path.isfile(schema_out):
                 log.info(f'creating {schema_out}')
                 shutil.copy(schema_in, schema_out)
     
     # create metadata files
-    xml.parse(meta=meta, target=prod_meta['ard_dir'], assets=assets, exist_ok=True)
-    stac.parse(meta=meta, target=prod_meta['ard_dir'], assets=assets, exist_ok=True)
+    xml.parse(meta=meta, target=prod_meta['dir_ard'], assets=assets, exist_ok=True)
+    stac.parse(meta=meta, target=prod_meta['dir_ard'], assets=assets, exist_ok=True)
 
 
 def product_info(product_type, src_ids, tile_id, extent, epsg,
