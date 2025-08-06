@@ -4,15 +4,13 @@ from datetime import datetime
 from osgeo import gdal
 
 
-def get_config(config_file, section_name='GENERAL'):
+def get_config(config_file):
     """Returns the content of a config file as a dictionary.
     
     Parameters
     ----------
     config_file: str
         Full path to the config file that should be parsed to a dictionary.
-    section_name: str, optional
-        Section name of the config file that parameters should be parsed from. Default is 'GENERAL'.
     
     Returns
     -------
@@ -23,10 +21,11 @@ def get_config(config_file, section_name='GENERAL'):
     if not os.path.isfile(config_file):
         raise FileNotFoundError("Config file {} does not exist.".format(config_file))
     
-    parser = configparser.ConfigParser(allow_no_value=True, converters={'_datetime': _parse_datetime,
-                                                                        '_tile_list': _parse_tile_list})
+    parser = configparser.ConfigParser(allow_no_value=True,
+                                       converters={'_datetime': _parse_datetime,
+                                                   '_tile_list': _parse_tile_list})
     parser.read(config_file)
-    parser_sec = parser[section_name]
+    parser_sec = parser['PROCESSING']
     
     allowed_keys = ['mode', 'mindate', 'maxdate', 'acq_mode', 'annotation', 'aoi_tiles', 'aoi_geometry', 'ard_dir', 'kml_file',
                     'work_dir', 'scene_dir', 'sar_dir', 'tmp_dir', 'wbm_dir',

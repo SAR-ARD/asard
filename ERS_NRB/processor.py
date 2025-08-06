@@ -18,9 +18,9 @@ from s1ard.ard import check_status, format, get_datasets
 from s1ard.ancillary import get_max_ext, group_by_attr
 
 
-def main(config_file, section_name):
+def main(config_file):
     update = False  # update existing products? Internal development flag.
-    config = get_config(config_file=config_file, section_name=section_name)
+    config = get_config(config_file=config_file)
     log = ancil.set_logging(config=config)
     geocode_prms = geocode_conf(config=config)
     gdal_prms = gdal_conf(config=config)
