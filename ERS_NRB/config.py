@@ -53,7 +53,7 @@ def get_config(config_file):
     parser_sec = parser['PROCESSING']
     
     allowed_keys = get_keys('processing')
-    out_dict = {}
+    out_dict = {'processing': {}}
     for k, v in parser_sec.items():
         if k not in allowed_keys:
             raise ValueError("Parameter '{}' is not allowed; should be one of {}".format(k, allowed_keys))
@@ -96,13 +96,13 @@ def get_config(config_file):
             allowed = ['Copernicus 10m EEA DEM', 'Copernicus 30m Global DEM II',
                        'Copernicus 30m Global DEM', 'GETASSE30', "Copernicus 90m Global DEM II"]
             assert v in allowed, "Parameter '{}': expected to be one of {}; got '{}' instead".format(k, allowed, v)
-        out_dict[k] = v
+        out_dict['processing'][k] = v
     try:
-        out_dict['compression']
+        out_dict['processing']['compression']
     except:
-        out_dict['compression'] = 'LZW'
+        out_dict['processing']['compression'] = 'LZW'
     
-    assert any([out_dict[k] is not None for k in ['aoi_tiles', 'aoi_geometry']])
+    assert any([out_dict['processing'][k] is not None for k in ['aoi_tiles', 'aoi_geometry']])
     
     return out_dict
 
@@ -186,7 +186,7 @@ def geocode_conf(config):
                         'IMP': 12.5,
                         'APP': 12.5,
                         'IMS': 12.5,
-                        'WSM': 75}[config['acq_mode']],
+                        'WSM': 75}[config['processing']['acq_mode']],
             'export_extra': ['localIncidenceAngle', 'incidenceAngleFromEllipsoid',
                              'scatteringArea', 'layoverShadowMask', 'gammaSigmaRatio'],
             'dem_resampling_method': 'BILINEAR_INTERPOLATION',
@@ -211,7 +211,7 @@ def gdal_conf(config):
     dict
         Dictionary containing GDAL configuration options for the current process.
     """
-    threads = config['gdal_threads']
+    threads = config['processing']['gdal_threads']
     threads_before = gdal.GetConfigOption('GDAL_NUM_THREADS')
     if not isinstance(threads, int):
         raise TypeError("'threads' must be of type int")

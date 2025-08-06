@@ -390,7 +390,7 @@ def set_logging(config, debug=False):
     formatter = logging.Formatter(fmt=log_format,
                                   datefmt='%Y-%m-%d %H:%M:%S')
     
-    logfile = config['logfile']
+    logfile = config['processing']['logfile']
     if logfile is not None:
         os.makedirs(os.path.dirname(logfile), exist_ok=True)
         handler = logging.FileHandler(filename=logfile, mode='a')
@@ -439,22 +439,22 @@ def _log_process_config(logger, config):
     ====================================================================================================================
     PROCESSING CONFIGURATION
 
-    mode                {config['mode']}
-    aoi_tiles           {config['aoi_tiles']}
-    aoi_geometry        {config['aoi_geometry']}
-    mindate             {config['mindate'].isoformat()}
-    maxdate             {config['maxdate'].isoformat()}
-    acq_mode            {config['acq_mode']}
+    mode                {config['processing']['mode']}
+    aoi_tiles           {config['processing']['aoi_tiles']}
+    aoi_geometry        {config['processing']['aoi_geometry']}
+    mindate             {config['processing']['mindate'].isoformat()}
+    maxdate             {config['processing']['maxdate'].isoformat()}
+    acq_mode            {config['processing']['acq_mode']}
 
-    work_dir            {config['work_dir']}
-    sar_dir             {config['sar_dir']}
-    tmp_dir             {config['tmp_dir']}
-    wbm_dir             {config['wbm_dir']}
+    work_dir            {config['processing']['work_dir']}
+    sar_dir             {config['processing']['sar_dir']}
+    tmp_dir             {config['processing']['tmp_dir']}
+    wbm_dir             {config['processing']['wbm_dir']}
     
-    scene_dir           {config['scene_dir']}
-    db_file             {config['db_file']}
-    dem_type            {config['dem_type']}
-    gdal_threads        {config['gdal_threads']}
+    scene_dir           {config['processing']['scene_dir']}
+    db_file             {config['processing']['db_file']}
+    dem_type            {config['processing']['dem_type']}
+    gdal_threads        {config['processing']['gdal_threads']}
 
     ====================================================================================================================
     SOFTWARE

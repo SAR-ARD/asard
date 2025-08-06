@@ -28,10 +28,10 @@ def main(config, tr):
         `standardGridOriginY` parameters of `pyroSAR.snap.util.geocode`
     """
     
-    if config['aoi_tiles'] is not None:
-        tiles = config['aoi_tiles']
-    elif config['aoi_tiles'] is None and config['aoi_geometry'] is not None:
-        with Vector(config['aoi_geometry']) as aoi:
+    if config['processing']['aoi_tiles'] is not None:
+        tiles = config['processing']['aoi_tiles']
+    elif config['processing']['aoi_tiles'] is None and config['processing']['aoi_geometry'] is not None:
+        with Vector(config['processing']['aoi_geometry']) as aoi:
             tiles = tile_from_aoi(aoi)
     else:
         raise RuntimeError("Either 'aoi_tiles' or 'aoi_geometry' need to be provided!")
