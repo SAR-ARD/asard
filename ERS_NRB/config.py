@@ -45,7 +45,9 @@ def get_config(config_file):
         raise FileNotFoundError("Config file {} does not exist.".format(config_file))
     
     parser = configparser.ConfigParser(allow_no_value=True,
-                                       converters={'_datetime': _parse_datetime,
+                                       converters={'_annotation': _parse_annotation,
+                                                   '_datetime': _parse_datetime,
+                                                   '_list': _parse_list,
                                                    '_tile_list': _parse_tile_list})
     parser.read(config_file)
     parser_sec = parser['PROCESSING']
@@ -58,11 +60,12 @@ def get_config(config_file):
         v = _val_cleanup(v)
         if v in ['None', 'none', '']:
             v = None
-        
         if k == 'mode':
             allowed = ['nrb', 'sar', 'all']
             assert v in allowed, "Parameter '{}': expected to be one of {}; got '{}' instead".format(k, allowed, v)
             v = v.lower()
+        if k == 'annotation':
+            v = parser_sec.get_annotation(k)
         if k == 'aoi_tiles':
             if v is not None:
                 v = parser_sec.get_tile_list(k)
@@ -104,6 +107,20 @@ def get_config(config_file):
     return out_dict
 
 
+def _parse_annotation(s):
+    """Custom converter for configparser:
+    https://docs.python.org/3/library/configparser.html#customizing-parser-behaviour"""
+    annotation_list = _parse_list(s)
+    if annotation_list is not None:
+        allowed = ['dm', 'ei', 'em', 'id', 'lc', 'ld', 'li', 'np', 'ratio', 'wm']
+        for layer in annotation_list:
+            if layer not in allowed:
+                msg = "Parameter 'annotation': Error while parsing to list; " \
+                      "layer '{}' is not supported. Allowed keys:\n{}"
+                raise ValueError(msg.format(layer, allowed))
+    return annotation_list
+
+
 def _parse_datetime(s):
     """Custom converter for configparser:
     https://docs.python.org/3/library/configparser.html#customizing-parser-behaviour"""
@@ -121,16 +138,27 @@ def _parse_datetime(s):
                             "'%Y-%m-%d'".format(s)) from e
 
 
+def _parse_list(s):
+    """Custom converter for configparser:
+    https://docs.python.org/3/library/configparser.html#customizing-parser-behaviour"""
+    if s in ['', 'None']:
+        return None
+    else:
+        return [x.strip() for x in s.split(',')]
+
+
 def _parse_tile_list(s):
     """Custom converter for configparser:
     https://docs.python.org/3/library/configparser.html#customizing-parser-behaviour"""
-    tile_list = s.replace(' ', '').split(',')
-    for tile in tile_list:
-        if len(tile) != 5:
-            raise ValueError("Parameter 'aoi_tiles': Error while parsing MGRS tile IDs to list; tile '{}' is not 5 "
-                             "digits long.".format(tile))
-        else:
-            continue
+    tile_list = _parse_list(s)
+    if tile_list is not None:
+        for tile in tile_list:
+            if len(tile) != 5:
+                raise ValueError("Parameter 'aoi_tiles': Error while parsing "
+                                 "MGRS tile IDs to list; tile '{}' is not 5 "
+                                 "characters long.".format(tile))
+            else:
+                continue
     return tile_list
 
 
