@@ -1,12 +1,13 @@
 import os
 import time
+import inspect
+from importlib import import_module
 from osgeo import gdal
 from spatialist import bbox, intersect
 from spatialist.ancillary import finder
 from pyroSAR import identify_many, Archive
-from ERS_NRB.config import get_config, geocode_conf, gdal_conf
+from ERS_NRB.config import get_config, gdal_conf
 
-from ERS_NRB import snap
 import ERS_NRB.ancillary as ancil
 import ERS_NRB.tile_extraction as tile_ex
 from ERS_NRB.ard import product_info, append_metadata
@@ -21,17 +22,18 @@ from s1ard.ancillary import get_max_ext, group_by_attr
 def main(config_file, **kwargs):
     update = False  # update existing products? Internal development flag.
     config = get_config(config_file=config_file, **kwargs)
-    config_proc = config['processing']
     log = ancil.set_logging(config=config)
-    geocode_prms = geocode_conf(config=config)
+    config_proc = config['processing']
+    processor_name = config_proc['processor']
+    processor = import_module(f'ERS_NRB.{processor_name}')
+    config_sar = config[processor_name]
     gdal_prms = gdal_conf(config=config)
     
-    sar_flag = True
-    nrb_flag = True
-    if config_proc['mode'] == 'sar':
-        nrb_flag = False
-    elif config_proc['mode'] == 'nrb':
-        sar_flag = False
+    spacings = {'AP': 10, 'IM': 10, 'WS': 60}
+    config_sar['spacing'] = spacings[config_proc['acq_mode'][:2]]
+    
+    sar_flag = 'sar' in config_proc['mode']
+    nrb_flag = 'nrb' in config_proc['mode']
     
     username, password = dem.authenticate(dem_type=config_proc['dem_type'],
                                           username=None, password=None)
@@ -79,7 +81,7 @@ def main(config_file, **kwargs):
     # geometry and DEM handling
     ids = identify_many(selection)
     
-    geo_dict, align_dict = tile_ex.main(config=config, tr=geocode_prms['spacing'])
+    geo_dict, align_dict = tile_ex.main(config=config, tr=config_sar['spacing'])
     # geo_dict, align_dict = tile_ex.no_aoi(ids=ids, spacing=geocode_prms['spacing'])
     aoi_tiles = list(geo_dict.keys())
     epsg_set = set([geo_dict[tile]['epsg'] for tile in list(geo_dict.keys())])
@@ -115,33 +117,43 @@ def main(config_file, **kwargs):
     if sar_flag:
         for i, scene in enumerate(ids):
             scene_base = os.path.splitext(os.path.basename(scene.scene))[0]
-            sar_dir_scene = os.path.join(config_proc['sar_dir'], scene_base)
+            out_dir_scene = os.path.join(config_proc['sar_dir'], scene_base)
+            tmp_dir_scene = os.path.join(config_proc['tmp_dir'], scene_base)
             
             log.info(f'processing scene {i + 1}/{len(scenes)}: {scene.scene}')
-            if os.path.isdir(sar_dir_scene) and not update:
+            if os.path.isdir(out_dir_scene) and not update:
                 log.info('Already processed - Skip!')
                 continue
             else:
-                os.makedirs(sar_dir_scene, exist_ok=True)
+                os.makedirs(out_dir_scene, exist_ok=True)
+                os.makedirs(tmp_dir_scene, exist_ok=True)
             ########################################################################################################
             # Preparation of DEM for SAR processing
-            fname_dem = os.path.join(config_proc['tmp_dir'], scene.outname_base() + '_DEM.tif')
-            if not os.path.isfile(fname_dem):
-                with scene.bbox() as geom:
-                    dem.mosaic(geometry=geom, outname=fname_dem,
-                               dem_type=config_proc['dem_type'],
-                               username=username, password=password)
-            
+            dem_prepare_mode = config_sar['dem_prepare_mode']
+            if dem_prepare_mode is not None:
+                fname_dem = dem.prepare(scene=scene, dem_type=config_proc['dem_type'],
+                                        dir_out=tmp_dir_scene, username=username,
+                                        password=password, mode=dem_prepare_mode,
+                                        tr=(config_sar['spacing'], config_sar['spacing']))
+            else:
+                fname_dem = None
+            ########################################################################################################
             log.info(f'scene {i + 1}/{len(ids)}: {scene.scene}')
             
             start_time = time.time()
             try:
                 log.info('starting SNAP processing')
-                snap.process(scene=scene.scene, outdir=config_proc['sar_dir'],
-                             measurement='gamma',
-                             tmpdir=config_proc['tmp_dir'],
-                             dem=fname_dem,
-                             **geocode_prms)
+                proc_args = {'scene': scene.scene,
+                             'outdir': config_proc['sar_dir'],
+                             'measurement': measurement,
+                             'tmpdir': config_proc['tmp_dir'],
+                             'dem': fname_dem,
+                             'export_extra': export_extra}
+                proc_args.update(config_sar)
+                sig = inspect.signature(processor.process)
+                accepted_params = set(sig.parameters.keys())
+                proc_args = {k: v for k, v in proc_args.items() if k in accepted_params}
+                processor.process(**proc_args)
                 t = round((time.time() - start_time), 2)
                 log.info(f'SNAP processing finished in {t} seconds')
             except Exception as e:
