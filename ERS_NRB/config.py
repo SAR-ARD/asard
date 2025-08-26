@@ -21,8 +21,8 @@ def get_keys(section):
     if section == 'processing':
         return ['acq_mode', 'annotation', 'aoi_geometry', 'aoi_tiles', 'ard_dir',
                 'compression', 'db_file', 'dem_type', 'gdal_threads', 'logfile',
-                'maxdate', 'mindate', 'mode', 'sar_dir', 'scene_dir', 'tmp_dir',
-                'wbm_dir', 'work_dir']
+                'maxdate', 'mindate', 'mode', 'processor', 'sar_dir', 'scene_dir',
+                'tmp_dir', 'wbm_dir', 'work_dir']
     else:
         raise RuntimeError(f"unknown section: {section}. Options: 'processing'.")
 

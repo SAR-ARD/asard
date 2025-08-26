@@ -159,11 +159,11 @@ def main(config_file):
             vec = [x.geometry() for x in scenes]
             extent = get_max_ext(geometries=vec)
             with bbox(coordinates=extent, crs=4326) as box:
-                dem.prepare(vector=box, threads=gdal_prms['threads'],
-                            dem_dir=None, wbm_dir=config_proc['wbm_dir'],
-                            dem_type=config_proc['dem_type'],
-                            tilenames=aoi_tiles, username=username, password=password,
-                            dem_strict=True)
+                dem.retile(vector=box, threads=gdal_prms['threads'],
+                           dem_dir=None, wbm_dir=config_proc['wbm_dir'],
+                           dem_type=config_proc['dem_type'],
+                           tilenames=aoi_tiles, username=username, password=password,
+                           dem_strict=True)
             # get the geometries of all tiles that overlap with the current scene group
             tiles = tile_ex.tile_from_aoi(vector=vec,
                                           return_geometries=True,
@@ -197,9 +197,10 @@ def main(config_file):
                     return
                 log.info(f'product name: {os.path.join(outdir, prod_meta["product_base"])}')
                 try:
-                    src_ids, sar_assets = get_datasets(scenes=scenes_sub_fnames,
+                    src_ids, sar_assets = get_datasets(scenes=scenes_sub,
                                                        sar_dir=config_proc['sar_dir'],
-                                                       extent=extent, epsg=epsg)
+                                                       extent=extent, epsg=epsg,
+                                                       processor_name=config_proc['processor'])
                     
                     ard_assets = format(config=config, prod_meta=prod_meta,
                                         src_ids=src_ids, sar_assets=sar_assets,
