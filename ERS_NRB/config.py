@@ -27,7 +27,7 @@ def get_keys(section):
         raise RuntimeError(f"unknown section: {section}. Options: 'processing'.")
 
 
-def get_config(config_file):
+def get_config(config_file, **kwargs):
     """Returns the content of a config file as a dictionary.
     
     Parameters
@@ -53,6 +53,12 @@ def get_config(config_file):
     parser_sec = parser['PROCESSING']
     
     allowed_keys = get_keys('processing')
+    
+    # override config file parameters with additional keyword arguments
+    for k, v in kwargs.items():
+        if k in allowed_keys:
+            parser_sec[k] = v.strip()
+    
     out_dict = {'processing': {}}
     for k, v in parser_sec.items():
         if k not in allowed_keys:
