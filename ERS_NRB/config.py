@@ -10,12 +10,13 @@ from s1ard.config import keyval_check, validate_options, validate_value
 
 def get_keys(section):
     """
-    get all allowed configuration keys
+    get all allowed configuration keys for a section
 
     Parameters
     ----------
-    section: {'processing'}
+    section: str
         the configuration section to get the allowed keys for.
+        Either 'processing' or the name of a SAR processor plugin e.g. 'snap'.
 
     Returns
     -------
@@ -28,7 +29,14 @@ def get_keys(section):
                 'maxdate', 'mindate', 'mode', 'processor', 'sar_dir', 'scene_dir',
                 'tmp_dir', 'wbm_dir', 'work_dir']
     else:
-        raise RuntimeError(f"unknown section: {section}. Options: 'processing'.")
+        try:
+            module = import_module(f'ERS_NRB.{section}')
+        except ModuleNotFoundError:
+            raise RuntimeError(f"unknown section: {section}.")
+        try:
+            return module.get_config_keys()
+        except AttributeError:
+            raise RuntimeError(f"missing function ERS_NRB.{section}.get_config_keys().")
 
 
 def read_config_file(config_file=None):
