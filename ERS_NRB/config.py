@@ -3,7 +3,8 @@ import re
 import importlib.resources
 from importlib import import_module
 import configparser
-from datetime import datetime, timedelta
+from datetime import timedelta
+from dateutil.parser import parse as dateparse
 from osgeo import gdal
 from s1ard.config import keyval_check, validate_options, validate_value
 
@@ -214,18 +215,7 @@ def _get_config_processing(parser, **kwargs):
 def _parse_datetime(s):
     """Custom converter for configparser:
     https://docs.python.org/3/library/configparser.html#customizing-parser-behaviour"""
-    if 'T' in s:
-        try:
-            return datetime.strptime(s, '%Y-%m-%dT%H:%M:%S')
-        except ValueError as e:
-            raise Exception("Parameters 'mindate/maxdate': Could not parse '{}' with datetime format "
-                            "'%Y-%m-%dT%H:%M:%S'".format(s)) from e
-    else:
-        try:
-            return datetime.strptime(s, '%Y-%m-%d')
-        except ValueError as e:
-            raise Exception("Parameters 'mindate/maxdate': Could not parse '{}' with datetime format "
-                            "'%Y-%m-%d'".format(s)) from e
+    return dateparse(s)
 
 
 def _parse_list(s):
