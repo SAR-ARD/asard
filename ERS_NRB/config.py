@@ -54,10 +54,8 @@ def read_config_file(config_file=None):
     configparser.ConfigParser
     """
     parser = configparser.ConfigParser(allow_no_value=True,
-                                       converters={'_annotation': _parse_annotation,
-                                                   '_datetime': _parse_datetime,
-                                                   '_list': _parse_list,
-                                                   '_tile_list': _parse_tile_list})
+                                       converters={'_datetime': _parse_datetime,
+                                                   '_list': _parse_list})
     
     if config_file:
         if not os.path.isfile(config_file):
@@ -213,20 +211,6 @@ def _get_config_processing(parser, **kwargs):
     return out
 
 
-def _parse_annotation(s):
-    """Custom converter for configparser:
-    https://docs.python.org/3/library/configparser.html#customizing-parser-behaviour"""
-    annotation_list = _parse_list(s)
-    if annotation_list is not None:
-        allowed = ['dm', 'ei', 'em', 'id', 'lc', 'ld', 'li', 'np', 'ratio', 'wm']
-        for layer in annotation_list:
-            if layer not in allowed:
-                msg = "Parameter 'annotation': Error while parsing to list; " \
-                      "layer '{}' is not supported. Allowed keys:\n{}"
-                raise ValueError(msg.format(layer, allowed))
-    return annotation_list
-
-
 def _parse_datetime(s):
     """Custom converter for configparser:
     https://docs.python.org/3/library/configparser.html#customizing-parser-behaviour"""
@@ -251,26 +235,6 @@ def _parse_list(s):
         return None
     else:
         return [x.strip() for x in s.split(',')]
-
-
-def _parse_tile_list(s):
-    """Custom converter for configparser:
-    https://docs.python.org/3/library/configparser.html#customizing-parser-behaviour"""
-    tile_list = _parse_list(s)
-    if tile_list is not None:
-        for tile in tile_list:
-            if len(tile) != 5:
-                raise ValueError("Parameter 'aoi_tiles': Error while parsing "
-                                 "MGRS tile IDs to list; tile '{}' is not 5 "
-                                 "characters long.".format(tile))
-            else:
-                continue
-    return tile_list
-
-
-def _val_cleanup(val):
-    """Helper function to clean up value strings while parsing a config file."""
-    return val.replace('"', '').replace("'", "")
 
 
 def gdal_conf(config):
