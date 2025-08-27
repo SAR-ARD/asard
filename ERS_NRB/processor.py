@@ -9,14 +9,15 @@ from pyroSAR import identify_many, Archive
 from ERS_NRB.config import get_config, gdal_conf
 
 import ERS_NRB.ancillary as ancil
-import ERS_NRB.tile_extraction as tile_ex
 from ERS_NRB.ard import product_info, append_metadata
 
 gdal.UseExceptions()
 
 from s1ard import dem
 from s1ard.ard import format, get_datasets
+from s1ard.search import scene_select
 from s1ard.ancillary import get_max_ext, group_by_attr
+import s1ard.tile_extraction as tile_ex
 
 
 def main(config_file, **kwargs):
@@ -39,56 +40,47 @@ def main(config_file, **kwargs):
                                           username=None, password=None)
     
     ####################################################################################################################
-    # archive / scene selection
+    # scene selection
+    log.info('collecting scenes')
     
     db_file_set = config_proc['db_file'] is not None
     scene_dir_set = config_proc['scene_dir'] is not None
     
     if db_file_set:
-        if not os.path.isfile(config_proc['db_file']):
-            config_proc['db_file'] = os.path.join(config_proc['work_dir'], config_proc['db_file'])
         archive = Archive(dbfile=config_proc['db_file'])
         if scene_dir_set:
             scenes = finder(target=config_proc['scene_dir'],
                             matchlist=[r'^SAR.*\.E[12]', r'^ASA.*\.N1'],
                             regex=True, recursive=True, foldermode=1)
             archive.insert(scenes)
-        
-        product = 'PRI'
-        if config_proc['acq_mode'].endswith('S'):
-            product = 'SLC'
-        selection = archive.select(product=product,
-                                   acquisition_mode=config_proc['acq_mode'],
-                                   mindate=config_proc['mindate'], maxdate=config_proc['maxdate'])
-        archive.close()
     else:
-        raise RuntimeError("parameter 'db_file' is not set")
+        raise RuntimeError('could not select a search option. Please check your configuration.')
+    
+    attr_search = ['mindate', 'maxdate',
+                   'aoi_tiles', 'aoi_geometry']
+    dict_search = {k: config_proc[k] for k in attr_search}
+    dict_search['acquisition_mode'] = config_proc['acq_mode']
+    
+    product = 'PRI'
+    if config_proc['acq_mode'].endswith('S'):
+        product = 'SLC'
+    dict_search['product'] = product
+    
+    selection, aoi_tiles = scene_select(archive=archive, **dict_search)
+    
+    archive.close()
     
     if len(selection) == 0:
-        msg = ("No scenes could be found for acquisition mode '{acq_mode}', "
-               "mindate '{mindate}' and maxdate '{maxdate}' in directory '{scene_dir}'.")
-        raise RuntimeError(msg.format(acq_mode=config_proc['acq_mode'],
-                                      mindate=config_proc['mindate'],
-                                      maxdate=config_proc['maxdate'],
-                                      scene_dir=config_proc['scene_dir']))
+        log.error('could not find any scenes')
+        return
+    
+    log.info(f'found {len(selection)} scene(s)')
+    scenes = identify_many(selection, sortkey='start')
     
     # group scenes by absolute orbit number
-    scenes = identify_many(selection)
     scenes_grouped = group_by_attr(scenes, lambda x: x.meta['orbitNumber_abs'])
     
     log.info(f'found {len(selection)} scene(s)')
-    ####################################################################################################################
-    # geometry and DEM handling
-    ids = identify_many(selection)
-    
-    geo_dict, align_dict = tile_ex.main(config=config, tr=config_sar['spacing'])
-    # geo_dict, align_dict = tile_ex.no_aoi(ids=ids, spacing=geocode_prms['spacing'])
-    aoi_tiles = list(geo_dict.keys())
-    epsg_set = set([geo_dict[tile]['epsg'] for tile in list(geo_dict.keys())])
-    if len(epsg_set) != 1:
-        raise RuntimeError('The AOI covers multiple UTM zones: {}\n '
-                           'This is currently not supported. Please refine your AOI.'.format(list(epsg_set)))
-    epsg = epsg_set.pop()
     ####################################################################################################################
     # annotation layer selection
     annotation = config_proc['annotation']
@@ -115,50 +107,51 @@ def main(config_file, **kwargs):
     ####################################################################################################################
     # main SAR processing
     if sar_flag:
-        for i, scene in enumerate(ids):
-            scene_base = os.path.splitext(os.path.basename(scene.scene))[0]
-            out_dir_scene = os.path.join(config_proc['sar_dir'], scene_base)
-            tmp_dir_scene = os.path.join(config_proc['tmp_dir'], scene_base)
-            
-            log.info(f'processing scene {i + 1}/{len(scenes)}: {scene.scene}')
-            if os.path.isdir(out_dir_scene) and not update:
-                log.info('Already processed - Skip!')
-                continue
-            else:
-                os.makedirs(out_dir_scene, exist_ok=True)
-                os.makedirs(tmp_dir_scene, exist_ok=True)
-            ########################################################################################################
-            # Preparation of DEM for SAR processing
-            dem_prepare_mode = config_sar['dem_prepare_mode']
-            if dem_prepare_mode is not None:
-                fname_dem = dem.prepare(scene=scene, dem_type=config_proc['dem_type'],
-                                        dir_out=tmp_dir_scene, username=username,
-                                        password=password, mode=dem_prepare_mode,
-                                        tr=(config_sar['spacing'], config_sar['spacing']))
-            else:
-                fname_dem = None
-            ########################################################################################################
-            log.info(f'scene {i + 1}/{len(ids)}: {scene.scene}')
-            
-            start_time = time.time()
-            try:
-                log.info('starting SNAP processing')
-                proc_args = {'scene': scene.scene,
-                             'outdir': config_proc['sar_dir'],
-                             'measurement': measurement,
-                             'tmpdir': config_proc['tmp_dir'],
-                             'dem': fname_dem,
-                             'export_extra': export_extra}
-                proc_args.update(config_sar)
-                sig = inspect.signature(processor.process)
-                accepted_params = set(sig.parameters.keys())
-                proc_args = {k: v for k, v in proc_args.items() if k in accepted_params}
-                processor.process(**proc_args)
-                t = round((time.time() - start_time), 2)
-                log.info(f'SNAP processing finished in {t} seconds')
-            except Exception as e:
-                log.error(msg=e)
-                raise
+        for h, scenes in enumerate(scenes_grouped):
+            log.info(f'SAR processing of group {h + 1}/{len(scenes_grouped)}')
+            for i, scene in enumerate(scenes):
+                scene_base = os.path.splitext(os.path.basename(scene.scene))[0]
+                out_dir_scene = os.path.join(config_proc['sar_dir'], scene_base)
+                tmp_dir_scene = os.path.join(config_proc['tmp_dir'], scene_base)
+                
+                log.info(f'processing scene {i + 1}/{len(scenes)}: {scene.scene}')
+                if os.path.isdir(out_dir_scene) and not update:
+                    log.info('Already processed - Skip!')
+                    continue
+                else:
+                    os.makedirs(out_dir_scene, exist_ok=True)
+                    os.makedirs(tmp_dir_scene, exist_ok=True)
+                ########################################################################################################
+                # Preparation of DEM for SAR processing
+                dem_prepare_mode = config_sar['dem_prepare_mode']
+                if dem_prepare_mode is not None:
+                    fname_dem = dem.prepare(scene=scene, dem_type=config_proc['dem_type'],
+                                            dir_out=tmp_dir_scene, username=username,
+                                            password=password, mode=dem_prepare_mode,
+                                            tr=(config_sar['spacing'], config_sar['spacing']))
+                else:
+                    fname_dem = None
+                ########################################################################################################
+                # main processing routine
+                start_time = time.time()
+                try:
+                    log.info('starting SAR processing')
+                    proc_args = {'scene': scene.scene,
+                                 'outdir': config_proc['sar_dir'],
+                                 'measurement': measurement,
+                                 'tmpdir': config_proc['tmp_dir'],
+                                 'dem': fname_dem,
+                                 'export_extra': export_extra}
+                    proc_args.update(config_sar)
+                    sig = inspect.signature(processor.process)
+                    accepted_params = set(sig.parameters.keys())
+                    proc_args = {k: v for k, v in proc_args.items() if k in accepted_params}
+                    processor.process(**proc_args)
+                    t = round((time.time() - start_time), 2)
+                    log.info(f'SAR processing finished in {t} seconds')
+                except Exception as e:
+                    log.error(msg=e)
+                    raise
     ####################################################################################################################
     # NRB - final product generation
     if nrb_flag:
