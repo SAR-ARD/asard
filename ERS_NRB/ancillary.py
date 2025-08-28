@@ -1,11 +1,11 @@
 import os
 import sys
 import logging
-from textwrap import dedent
+from datetime import datetime
+from importlib import import_module
 from osgeo import gdal
 import spatialist
 import pyroSAR
-from pyroSAR import examine
 import ERS_NRB
 
 log = logging.getLogger('s1ard')
@@ -67,7 +67,8 @@ def set_logging(config, debug=False):
 
 def _log_process_config(logger, config):
     """
-    Adds a header to the logfile, which includes information about the current processing configuration.
+    Adds a header to the logfile, which includes information about
+    the current processing configuration.
 
     Parameters
     ----------
@@ -76,48 +77,38 @@ def _log_process_config(logger, config):
     config: dict
         Dictionary of the parsed config parameters for the current process.
     """
-    try:
-        snap_config = examine.ExamineSnap()
-        core = snap_config.get_version('core')
-        microwavetbx = snap_config.get_version('microwavetbx')
-        snap_core = f"{core['version']} | {core['date']}"
-        snap_microwavetbx = f"{microwavetbx['version']} | {microwavetbx['date']}"
-    except RuntimeError:
-        snap_core = 'unknown'
-        snap_microwavetbx = 'unknown'
+    sw_versions = {
+        'ERS_NRB': ERS_NRB.__version__,
+        'python': sys.version,
+        'python-pyroSAR': pyroSAR.__version__,
+        'python-spatialist': spatialist.__version__,
+        'python-GDAL': gdal.__version__}
     
-    header = f"""
-    ====================================================================================================================
-    PROCESSING CONFIGURATION
-
-    mode                {config['processing']['mode']}
-    aoi_tiles           {config['processing']['aoi_tiles']}
-    aoi_geometry        {config['processing']['aoi_geometry']}
-    mindate             {config['processing']['mindate'].isoformat()}
-    maxdate             {config['processing']['maxdate'].isoformat()}
-    acq_mode            {config['processing']['acq_mode']}
-
-    work_dir            {config['processing']['work_dir']}
-    sar_dir             {config['processing']['sar_dir']}
-    tmp_dir             {config['processing']['tmp_dir']}
-    wbm_dir             {config['processing']['wbm_dir']}
+    processor_name = config['processing']['processor']
+    processor = import_module(f'ERS_NRB.{processor_name}')
+    sw_versions.update(processor.version_dict())
     
-    scene_dir           {config['processing']['scene_dir']}
-    db_file             {config['processing']['db_file']}
-    dem_type            {config['processing']['dem_type']}
-    gdal_threads        {config['processing']['gdal_threads']}
-
-    ====================================================================================================================
-    SOFTWARE
-
-    ERS_NRB             {ERS_NRB.__version__}
-    snap-core           {snap_core}
-    snap-microwavetbx   {snap_microwavetbx}
-    python              {sys.version}
-    python-pyroSAR      {pyroSAR.__version__}
-    python-spatialist   {spatialist.__version__}
-    python-GDAL         {gdal.__version__}
-
-    ====================================================================================================================
-    """
-    logger.info(dedent(header))
+    max_len_sw = len(max(sw_versions.keys(), key=len))
+    max_len_main = len(max(config['processing'].keys(), key=len))
+    max_len_proc = len(max(config[processor_name].keys(), key=len))
+    max_len = max(max_len_sw, max_len_main, max_len_proc) + 4
+    
+    lines = []
+    lines.append('=' * 100)
+    for section in ['PROCESSING', processor_name.upper()]:
+        lines.append(f'{section}')
+        for k, v in config[section.lower()].items():
+            if k == 'dem_prepare_mode':
+                continue
+            if isinstance(v, datetime):
+                val = v.isoformat()
+            else:
+                val = v
+            lines.append(f"{k: <{max_len}}{val}")
+        lines.append('=' * 100)
+    lines.append('SOFTWARE')
+    for k, v in sw_versions.items():
+        lines.append(f"{k: <{max_len}}{v}")
+    lines.append('=' * 100)
+    header = '\n'.join(lines)
+    logger.info(header)
