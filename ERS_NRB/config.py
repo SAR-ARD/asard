@@ -25,9 +25,11 @@ def get_keys(section):
         a list of keys
     """
     if section == 'processing':
-        return ['acq_mode', 'annotation', 'aoi_geometry', 'aoi_tiles', 'ard_dir',
-                'db_file', 'dem_type', 'gdal_threads', 'logfile',
-                'maxdate', 'mindate', 'mode', 'processor', 'sar_dir', 'scene_dir',
+        return ['acq_mode', 'annotation', 'aoi_geometry', 'aoi_tiles',
+                'ard_dir', 'date_strict', 'db_file', 'dem_type',
+                'gdal_threads', 'logfile', 'maxdate',
+                'mindate', 'mode', 'processor',
+                'sar_dir', 'scene_dir', 'sensor',
                 'tmp_dir', 'wbm_dir', 'work_dir']
     else:
         try:
@@ -127,19 +129,21 @@ def _get_config_processing(parser, **kwargs):
         'wbm_dir': 'WBM',
         'gdal_threads': '4',
         'dem_type': 'Copernicus 30m Global DEM',
+        'date_strict': 'True',
         'annotation': 'dm,ei,id,lc,li,np,ratio',
         'logfile': 'None'
     }
     
     processing_options = {
-        'acq_mode': ['IMM', 'IMP', 'APP', 'IMS', 'WSM'],
+        'acq_mode': ['APP', 'APS', 'IMM', 'IMP', 'IMS', 'WSM', 'WSS'],
         'annotation': ['dm', 'ei', 'em', 'id', 'lc',
                        'ld', 'li', 'np', 'ratio', 'wm'],
         'dem_type': ['Copernicus 10m EEA DEM',
                      'Copernicus 30m Global DEM',
                      'Copernicus 30m Global DEM II',
                      'GETASSE30'],
-        'mode': ['sar', 'nrb']}
+        'mode': ['sar', 'nrb'],
+        'sensor': ['ERS1', 'ERS2', 'ASAR']}
     
     for k, v in processing_defaults.items():
         if k not in proc_sec.keys():
@@ -193,7 +197,7 @@ def _get_config_processing(parser, **kwargs):
                 v = os.path.join(proc_sec['work_dir'], v)
         if k == 'gdal_threads':
             v = int(v)
-        if k in ['date_strict']:
+        if k in ['date_strict', 'date_strict']:
             v = proc_sec.getboolean(k)
         
         validate_options(k, v, options=processing_options)

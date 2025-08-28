@@ -56,8 +56,8 @@ def main(config_file, **kwargs):
     else:
         raise RuntimeError('could not select a search option. Please check your configuration.')
     
-    attr_search = ['mindate', 'maxdate',
-                   'aoi_tiles', 'aoi_geometry']
+    attr_search = ['sensor', 'mindate', 'maxdate',
+                   'aoi_tiles', 'aoi_geometry', 'date_strict']
     dict_search = {k: config_proc[k] for k in attr_search}
     dict_search['acquisition_mode'] = config_proc['acq_mode']
     

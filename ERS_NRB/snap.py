@@ -12,6 +12,9 @@ from s1ard.ancillary import datamask
 from s1ard.config import keyval_check
 from s1ard.snap import mli, rtc, gsr, sgr, geo, postprocess
 
+# do not remove, needed for interface
+from s1ard.snap import version_dict
+
 import logging
 
 log = logging.getLogger('s1ard')
