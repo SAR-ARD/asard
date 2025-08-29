@@ -167,7 +167,7 @@ def pre(src, dst, workflow, allow_res_osv=True,
         if scene.sensor == 'ASAR':
             if scene.acquisition_mode in ['APP', 'APS', 'IMS']:
                 source_bands = [f'Intensity_{x}' for x in polarizations]
-            elif scene.acquisition_mode in ['IMP']:
+            elif scene.acquisition_mode in ['IMP', 'WSM']:
                 source_bands = 'Intensity'
             else:
                 raise ValueError(f'Unsupported acquisition mode: '
