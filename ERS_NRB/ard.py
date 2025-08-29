@@ -91,7 +91,7 @@ def product_info(product_type, src_ids, tile_id, extent, epsg,
     elif sensor == 'ASAR':
         if acquisition_mode in ['APP', 'APS']:
             mode = 'AP'
-        elif acquisition_mode in ['IMP', 'IMP']:
+        elif acquisition_mode in ['IMP', 'IMS']:
             mode = 'IM'
         elif acquisition_mode in ['WSM', 'WSS']:
             mode = 'WS'

@@ -164,8 +164,19 @@ def pre(src, dst, workflow, allow_res_osv=True,
         ############################################
         cal = parse_node('Calibration')
         wf.insert_node(cal, before=last.id)
-        cal.parameters['sourceBands'] = 'Intensity'
-        # cal.parameters['selectedPolarisations'] = polarizations # SNAP will fail when this is set
+        if scene.sensor == 'ASAR':
+            if scene.acquisition_mode in ['APP', 'APS', 'IMS']:
+                source_bands = [f'Intensity_{x}' for x in polarizations]
+            elif scene.acquisition_mode in ['IMP']:
+                source_bands = 'Intensity'
+            else:
+                raise ValueError(f'Unsupported acquisition mode: '
+                                 f'{scene.acquisition_mode}')
+        else:
+            raise ValueError(f'Unsupported sensor: {scene.sensor}')
+        cal.parameters['sourceBands'] = source_bands
+        # SNAP will fail when this is set
+        # cal.parameters['selectedPolarisations'] = polarizations
         cal.parameters['createBetaBand'] = False
         cal.parameters['createGammaBand'] = False
         cal.parameters['outputBetaBand'] = output_beta0
