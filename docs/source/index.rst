@@ -1,5 +1,5 @@
 Welcome to ERS_NRB's documentation!
-==================================
+===================================
 
 ERS_NRB is a prototype processor for the ASAR and ERS Normalised Radar Backscatter product.
 Further information about this product can be found
