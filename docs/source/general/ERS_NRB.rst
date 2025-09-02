@@ -1,104 +1,86 @@
-ERS_NRB Production
-==================
+ARD Production
+==============
 
-The following describes the current workflow for producing the ASAR/ERS Normalised Radar Backscatter product (ERS_NRB), which is being developed in study 1 of the COPA project.
-This is not part of the official pyroSAR documentation.
-However, as pyroSAR is the foundation of the processor, its documentation is used to outline the processor details to conveniently link to all relevant functionality.
+The following sections give a brief overview of the major components of creating an ERS/Envisat NRB product.
+All steps are comprised in function :func:`ERS_NRB.processor.main`.
+Currently, `ERS_NRB` makes heavy use of the Sentinel-1 NRB package `s1ard <https://github.com/SAR-ARD/s1ard>`_.
+Common functionality is intended to be outsourced to a dedicated package in the future.
 
+MGRS Gridding
+-------------
 
-The ASAR/ERS images are managed in a local SQLite database to select scenes for processing (see pyroSAR's section on `Database Handling`_).
+The basis of the processing chain builds the Sentinel-2 Military Grid Reference System (MGRS) tiling system.
+Hence, a reference file is needed containing the respective tile information for processing NRB products.
+A KML file is available online that will be used in the following steps:
+
+`S2A_OPER_GIP_TILPAR_MPC__20151209T095117_V20150622T000000_21000101T000000_B00.zip <https://sentiwiki.copernicus.eu/__attachments/1692737/S2A_OPER_GIP_TILPAR_MPC__20151209T095117_V20150622T000000_21000101T000000_B00.zip>`_
+
+This file contains all relevant information about individual tiles, in particular the EPSG code of the respective UTM zone and the geometry of the tile in UTM coordinates.
+This file is automatically downloaded to `~/s1ard` by the function :func:`s1ard.ancillary.get_kml`.
+The function :func:`s1ard.tile_extraction.aoi_from_tile` can be used to extract one or multiple tiles as :class:`spatialist.vector.Vector` object.
+
+Scene Management
+----------------
+
+The L1 SAR products are managed in a local SQLite database to select scenes for processing (see pyroSAR's section on `Database Handling`_).
 
 After loading an MGRS tile as an :class:`spatialist.vector.Vector` object and selecting all relevant overlapping scenes
 from the database, processing can commence.
 
-The central function for processing backscatter data with SNAP is :func:`pyroSAR.snap.util.geocode`. It will perform all necessary steps to
-generate radiometrically terrain corrected gamma naught backscatter plus all relevant additional datasets like
+DEM Handling
+------------
+
+s1ard offers a convenience function :func:`s1ard.dem.mosaic` for creating scene-specific DEM files from various sources.
+The function is based on :func:`pyroSAR.auxdata.dem_autoload` and :func:`pyroSAR.auxdata.dem_create` and will
+
+- download all tiles of the selected source overlapping with a defined geometry
+- create a GDAL VRT virtual mosaic from the tiles including gap filling over ocean areas
+- create a new GeoTIFF from the VRT including geoid-ellipsoid height conversion if necessary
+  (WGS84 heights are generally required for SAR processing but provided heights might be relative to a geoid like EGM2008).
+
+SAR Processing
+--------------
+
+SNAP
+====
+
+The central function for processing backscatter data with SNAP is :func:`ERS_NRB.snap.process`. It will perform all necessary steps to
+generate radiometrically terrain corrected gamma/sigma naught backscatter plus all relevant additional datasets like
 local incident angle and local contribution area (see argument ``export_extra``).
+In a full processor run, the following functions are called in sequence:
 
-The code below presents an incomplete call to :func:`pyroSAR.snap.util.geocode` where several variables have been set implicitly.
-``infile`` can either be  a single ASAR/ERS scene or multiple, which will then be mosaiced in radar geometry prior to geocoding.
-``vec`` is the :class:`spatialist.vector.Vector` object
-created from the S2 KML file with corner coordinate (``xmax``, ``ymin``). The resulting image tiles are aligned to this corner coordinate.
+- :func:`ERS_NRB.snap.pre`: general pre-processing including
 
-.. code-block:: python
+  + Orbit state vector enhancement
+  + Calibration to beta naught (for RTC)
 
-    from pyroSAR.snap import geocode
+- :func:`s1ard.snap.mli`: creates multi-looked image files (MLIs) per polarization if the target pixel spacing is larger than the source pixel spacing.
 
-    epsg = 32632  # just for demonstration; will be read from AOI geojson
-    spacing = 10
-    dem = 'Copernicus 30m Global DEM'
+- :func:`s1ard.snap.rtc`: radiometric terrain flattening.
+  Output is backscatter in gamma naught RTC (:math:`\gamma^0_T`) and sigma naught RTC (:math:`\sigma^0_T`) as well as the scattering area (:math:`\beta^0 / \gamma^0_T`).
 
-    geocode(infile=infile, outdir=outdir, tmpdir=tmpdir,
-            t_srs=epsg, shapefile=vec, tr=spacing,
-            alignToStandardGrid=True,
-            standardGridOriginX=xmax, standardGridOriginY=ymin,
-            demName=dem, scaling='linear',
-            export_extra=['localIncidenceAngle', 'incidenceAngleFromEllipsoid',
-                          'scatteringArea', 'layoverShadowMask'])
+- :func:`s1ard.snap.gsr`: computation of the gamma-sigma ratio (:math:`\sigma^0_T / \gamma^0_T`).
 
+- :func:`s1ard.snap.geo`: geocoding. This function may be called multiple times if the scene overlaps with multiple UTM zones.
 
-The Copernicus GLO-30 DEM can easily be used for processing as it is available via SNAP auto-download. Furthermore,
-Copernicus EEA-10 DEM usage has been implemented as part of the function :func:`pyroSAR.auxdata.dem_autoload`.
+The output is a BEAM-DIMAP product which consists of a `dim` metadata file and a `data` folder containing the individual image layers in ENVI format (extension `img`).
+The function :func:`s1ard.snap.find_datasets` can be used to collect the individual images files for a scene.
 
-Many DEMs contain heights relative to a geoid such as EGM96. For SAR processing this information needs to be converted to WGS84 ellipsoid heights.
-pyroSAR offers a function :func:`pyroSAR.auxdata.get_egm_lookup` to download a conversion file used by SNAP. However, SNAP itself will also automatically download this file if not found.
+Depending on the user configuration parameters ``measurement`` and ``annotation``, some modifications to the workflow above are possible:
 
-Alternative to the auto-download options, a custom DEM can be passed to :func:`pyroSAR.snap.util.geocode` via argument ``externalDEMFile``.
-The function :func:`pyroSAR.auxdata.dem_create` can be used to directly convert between EGM96 and WGS84 heights using GDAL.
-This way, the argument ``externalDEMApplyEGM`` of function :func:`pyroSAR.snap.util.geocode` can be set to ``False`` and no additional lookup file is needed.
+- :func:`s1ard.snap.gsr` may be replaced by :func:`s1ard.snap.sgr` to create a sigma-gamma ratio (:math:`\gamma^0_T / \sigma^0_T`)
 
-ASAR/ERS orbit state vector files (OSV) for enhancing the orbit location accuracy can be downloaded automatically by SNAP.
-For ERS_NRB processing at least Restituted Orbit files (RESORB) are needed while the more accurate Precise Orbit Ephemerides (POEORB) delivered two weeks after scene acquisition do not provide additional benefit.
+ARD Formatting
+--------------
 
-The function :func:`pyroSAR.snap.util.geocode` will create a list of plain GeoTIFF files, which are slightly larger than the actual tile to ensure full tile coverage after geocoding.
-These files are then subsetted to the actual tile extent, converted to Cloud Optimized GeoTIFFs (COG), and renamed to the ERS_NRB naming scheme.
-The function :func:`spatialist.auxil.gdalwarp` is used for this task, which is a simple wrapper around the gdalwarp utility of GDAL.
-The following is another incomplete code example highlighting the general procedure of converting the individual images.
-The ``outfile`` name is generated from information of the source images, the MGRS tile ID and the name of the respective file as written by :func:`pyroSAR.snap.util.geocode`.
+During SAR processing, files covering a whole scene are created. In this last step, the scene-based structure is converted to the MGRS tile structure.
+If one tile overlaps with multiple scenes, these scenes are first virtually mosaiced using VRT files.
+The files are then subsetted to the actual tile extent, converted to Cloud Optimized GeoTIFFs (COG), and renamed to the NRB naming scheme.
+All steps are performed by :func:`s1ard.ard.format`.
+The actual file format conversion is done with :func:`spatialist.auxil.gdalwarp`, which is a simple wrapper around the gdalwarp utility of GDAL.
 
-.. code-block:: python
+After all COG files have been created, GDAL VRT files are written for log scaling and conversion to other backscatter conventions using function :func:`s1ard.ard.create_vrt`.
 
-    from spatialist import gdalwarp, Raster
-    from osgeo import gdal
-
-    write_options = ['BLOCKSIZE=512',
-                     'COMPRESS=LERC_ZSTD',
-                     'MAX_Z_ERROR=0.001']
-
-    with Raster(infiles, list_separate=False) as ras:
-        source = ras.filename
-
-    gdalwarp(src=source, dst=outfile,
-             options={'format': 'COG',
-                      'outputBounds': [xmin, ymin, xmax, ymax],
-                      'creationOptions': write_options})
-
-After all COG files have been created, GDAL VRT files are written for log scaling and sigma naught RTC backscatter computation.
-The code below demonstrates the generation of a VRT file using :func:`spatialist.auxil.gdalbuildvrt` followed by an XML
-modification to insert the pixel function (a way to achieve this with GDAL's gdalbuildvrt functionality has not yet been found).
-
-.. code-block:: python
-
-    from lxml import etree
-    from spatialist import gdalbuildvrt
-
-    def vrt_pixfun(src, dst, fun, scale=None, offset=None, options=None):
-        gdalbuildvrt(src=src, dst=dst, options=options)
-        tree = etree.parse(dst)
-        root = tree.getroot()
-        band = tree.find('VRTRasterBand')
-        band.attrib['subClass'] = 'VRTDerivedRasterBand'
-        pixfun = etree.SubElement(band, 'PixelFunctionType')
-        pixfun.text = fun
-        if scale is not None:
-            sc = etree.SubElement(band, 'Scale')
-            sc.text = str(scale)
-        if offset is not None:
-            off = etree.SubElement(band, 'Offset')
-            off.text = str(offset)
-        etree.indent(root)
-        tree.write(dst, pretty_print=True, xml_declaration=False, encoding='utf-8')
-
-In a last step the OGC XML and STAC JSON metadata files will be written for the ERS_NRB product.
+In a last step the OGC XML and STAC JSON metadata files will be written for the NRB product.
 
 .. _Database Handling: https://pyrosar.readthedocs.io/en/latest/general/processing.html#database-handling

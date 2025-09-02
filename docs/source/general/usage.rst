@@ -1,26 +1,109 @@
 Usage
 =====
 
+This section outlines how to configure and run the processor. Configuration is most conveniently kept in a `config.ini`
+configuration file but can also be modified via the command line.
+
+The configuration file follows the INI format, which uses plain text to store properties as key-value pairs.
+INI files can be created and opened with any text editor.
+The `config.ini` file used with the `ERS_NRB` package requires three sections: ``PROCESSING`` and ``METADATA``
+and a section for the SAR processor, e.g. ``SNAP``.
+An example `config.ini` file for the `ERS_NRB` package can be found here:
+
+https://github.com/SAR-ARD/ERS_NRB/blob/main/ERS_NRB/resources/config.ini
+
+The file's configuration will also be used as default if not specified by the user.
+
+To create an NRB product as defined by the CEOS-ARD specification, the following configuration would be necessary:
+
+.. code-block:: ini
+
+    mode = sar, nrb
+    measurement = gamma
+    annotation = dm, ei, em, id, lc, li, ratio
+
+The generated backscatter is gamma nought RTC. Annotation layers are a data mask, ellipsoidal incident angle, elevation model,
+acquisition id mask, local contributing area, local incidence angle and a gamma-sigma ratio.
+
+See below for further details.
+
+Command Line Usage
+------------------
+
+The `ERS_NRB` package comes with a command line interface (CLI) tool ``asarrb`` with two subcommands ``init`` and ``process`` to initialize configuration and run the processing, respectively.
+
+The base command can be used to print documentation and the package version:
+
+::
+
+    asarrb --help
+
+::
+
+    asarrb --version
+
+The ``asarrb init`` command can be used to initialize a configuration file from the package's default file and change some of the defaults.
+
+::
+
+    asarrb init -c config.ini --work_dir /path/to/work_dir
+
+Alternatively, a previously created configuration file can be used as base:
+
+::
+
+    asarrb init -c config.ini -s config_source.ini --work_dir /path/to/work_dir
+
+Just like with ``work_dir``, all configuration parameters can be modified via the CLI:
+
+::
+
+    asarrb init -c config.ini --work_dir /path/to/work_dir --acq_mode IW --annotation dm,id
+
+Command line arguments passed to the SAR processor may contain ``-`` characters in the value, which are mistaken for argument key identifiers.
+An example is the SNAP ``gpt_args`` parameter.
+In the example below, SNAP is instructed to use a maximum of 32GB memory, 20GB cache size and 16 threads.
+
+::
+
+    asarrb init -c config.ini -- --gpt_args "-J-Xmx32G -c 20G -x -q 16"
+
+Once a configuration file has been created and all of its parameters have been properly defined,
+it can be used to start the processor using the ``asarrb process`` CLI tool.
+Just like with ``asarrb init``, all configuration in the `config.ini` file can be overridden via the CLI.
+
+::
+
+    asarrb process -c /path/to/config.ini --acq_mode IW --annotation dm,id
+
 Configuration
 -------------
-Usage of the ERS_NRB package currently relies on a configuration file that needs to be set up by the user. The configuration
-file follows the INI format, which uses plain text to store properties as key-value pairs. INI files can be created and
-opened with any text editor. An example ``config.ini`` file for the ERS_NRB package can be found here:
 
-https://github.com/SAR-ARD/ERS_NRB/blob/main/config.ini
-
-The following provides an overview of the parameters the ``config.ini`` should contain and anything that should be
+The following provides an overview of the parameters the `config.ini` should contain and anything that should be
 considered when selecting their values:
 
-- **mode**
+Processing Section
+^^^^^^^^^^^^^^^^^^
 
-Options: ``all | nrb | snap``
+mode
+++++
 
-This parameter determines if the entire processing chain should be executed or only part of it.
+Options: ``sar | nrb``
 
-- **aoi_tiles** & **aoi_geometry**
+This parameter determines what steps should be executed.
+``sar`` will only start SAR preprocessing, whereas ``nrb`` will only start ARD generation from existing SAR
+products preprocessed in ``sar``.
+By defining both ``sar`` and one of the ARD modes as list, both SAR preprocessing and ARD generation can be run together:
 
-The area of interest (AOI) for which ERS-NRB products should be created.
+.. code-block:: python
+
+    mode = sar, nrb
+
+
+aoi_tiles & aoi_geometry
+++++++++++++++++++++++++
+
+Limit processing to a specific area of interest (AOI).
 
 ``aoi_tiles`` can be used to define the area of interest via MGRS tile IDs, which must be provided comma-separated (e.g.,
 ``aoi_tiles = 32TNS, 32TMT, 32TMS``). ``aoi_geometry`` defines the area of interest via a full path to a vector file
@@ -29,94 +112,164 @@ these for processing.
 Both parameters are optional and can be set to ``None`` or left empty. ``aoi_tiles`` overrides ``aoi_geometry``.
 If neither is defined, all tiles overlapping with the scene search result are processed.
 
-- **mindate** & **maxdate**
+mindate & maxdate
++++++++++++++++++
 
-The time period to create ERS-NRB products for. Allowed date formats are ``%Y-%m-%d`` and ``%Y-%m-%dT%H:%M:%S``.
+Search for source scenes within the defined date range.
+Allowed are all string representations that can be parsed by :meth:`dateutil.parser.parse`.
 
-- **acq_mode**
+date_strict
++++++++++++
 
-Options: ``IMP | IMM | IMS | APP | WSM``
+Treat dates as strict limits or also allow flexible limits to incorporate scenes
+whose acquisition period overlaps with the defined limit.
+
+ + strict: ``start >= mindate & stop <= maxdate``
+ + not strict: ``stop >= mindate & start <= maxdate``
+
+sensor
+++++++
+
+Options: ``ERS1 | ERS2 | ASAR``
+
+The sensor/platform.
+
+acq_mode
+++++++++
+
+Options: ``APP | APS | IMP | IMS | WSM | WSS``
 
 The acquisition mode of the source scenes that should be processed.
 
-- **work_dir** & **scene_dir**
+work_dir
+++++++++
 
-Both need to be provided as full paths to existing directories. ``work_dir`` is the main directory in which any
-subdirectories and files are stored that are generated during processing. ``scene_dir`` will be searched recursively for
-any ASAR/ERS scenes using the regex pattern ``'^SAR.*\.E[12]$'`` and ``'^ASA.*\.N1$'``.
+``work_dir`` is the main directory in which any subdirectories and files are stored that are generated during processing.
+Needs to be provided as full path to an existing writable directory.
 
-- **tmp_dir**, **dem_dir** & **wbm_dir**
+tmp_dir, sar_dir, ard_dir, wbm_dir
+++++++++++++++++++++++++++++++++++
 
-Processing ERS-NRB products creates many intermediate files that are expected to be stored in separate subdirectories. The
+Processing creates many intermediate files that are expected to be stored in separate subdirectories. The
 default values provided in the example configuration file linked above are recommended and will automatically create
-subdirectories relative to the directory specified with ``work_dir``. E.g., ``dem_dir = DEM`` will create the subdirectory
-``/<work_dir>/DEM``. Optionally, full paths to existing directories can be provided for all of these parameters.
+subdirectories relative to the directory specified with ``work_dir``. E.g., ``ard_dir = ARD`` will create the subdirectory
+``<work_dir>/ARD``. Optionally, full paths to existing directories can be provided for all of these parameters.
 
-- **db_file**
+logfile
++++++++
 
-Any ASAR/ERS scenes found in ``scene_dir`` will be stored in a database file created by :class:`pyrosar.drivers.Archive`.
+The path to a log file. If set to ``None``, all logs will be printed to the console.
+The file path can be relative to ``work_dir`` or absolute.
+Default if not defined: ``None``.
+
+scene search: db_file & scene_dir
++++++++++++++++++++++++++++++++++
+
+Metadata is queried from an SQLite database created by :class:`pyroSAR.drivers.Archive`.
 With ``db_file`` either a full path to an existing database can be provided or it will be created in ``work_dir`` if only
-a filename is provided. E.g., ``db_file = scenes.db`` will automatically create the database file ``/<work_dir>/scenes.db``.
+a filename is provided. E.g., ``db_file = scenes.db`` will automatically create the database file ``<work_dir>/scenes.db``.
+``scene_dir`` can optionally be provided as full path to an existing directory.
+It will be searched recursively for any L1 SAR products using the regular expressions ``r'^ASA.*\.N1'`` and ``r'^SAR.*\.E[12]'``.
+All scenes found are then inserted into ``db_file`` using method :meth:`pyroSAR.drivers.Archive.insert`.
 
-- **kml_file**
-
-The Sentinel-2 Military Grid Reference System (MGRS) tiling system establishes the basis of the processing chain and a
-local reference file containing the respective tile information for processing S1-NRB products is needed. The official
-KML file provided by ESA can be retrieved `here <https://sentinel.esa.int/documents/247904/1955685/S2A_OPER_GIP_TILPAR_MPC__20151209T095117_V20150622T000000_21000101T000000_B00.kml>`_.
-With the ``kml_file`` parameter either a full path to this reference file can be provided or it is expected to be located
-in the directory provided with ``work_dir`` if only a filename is provided. E.g., the processor expects to find
-``/<work_dir>/s2_grid.kml`` if ``kml_file = s2_grid.kml``.
-
-- **dem_type**
+dem_type
+++++++++
 
 Options: ``Copernicus 10m EEA DEM | Copernicus 30m Global DEM II | Copernicus 30m Global DEM | GETASSE30``
 
 The Digital Elevation Model (DEM) that should be used for processing.
 
-Note that water body masks are not available for "Copernicus 30m Global DEM" and "GETASSE30", and will therefore not be
+Note that water body masks are not available for "GETASSE30", and will therefore not be
 included in the product data mask. "Copernicus 10m EEA DEM" and "Copernicus 30m Global DEM II" (both include water body masks)
 are retrieved from the `Copernicus Space Component Data Access system (CSCDA) <https://spacedata.copernicus.eu/web/cscda/data-access/registration>`_,
-which requires registration. You will need to set up the environment variables ``FTP_USER`` and ``FTP_PASS`` to authenticate.
+which requires authentication. The processor reads username and password from the environment variables `DEM_USER`
+and `DEM_PASS` if possible and otherwise interactively asks for authentication if one of these DEM options is selected.
 
-- **gdal_threads**
+gdal_threads
+++++++++++++
 
 Temporarily changes GDAL_NUM_THREADS during processing. Will be reset after processing has finished.
 
-- **compression**
+annotation
+++++++++++
 
-Selects the compression of the final product. LZW if not specified. See https://gdal.org/drivers/raster/gtiff.html#creation-options for options.
+A comma-separated list to define the annotation layers to be created for each ARD product.
+Supported options:
 
-Sections
-^^^^^^^^
-Configuration files in INI format can have different sections. Each section begins at a section name and ends at the next
-section name. The ``config.ini`` file used with the ERS_NRB package should at least have a dedicated section for processing
-related parameters. This section is by default named ``[PROCESSING]`` (see `example config file <https://github.com/SAR-ARD/ERS_NRB/blob/main/config.ini>`_).
+ + **dm: data mask**. This contains six binary masks: not layover not shadow, layover, shadow, ocean, lakes, rivers.
+   The ocean, lakes and rivers masks are extracted from the DEM ancillary layers if present.
+ + **ei: ellipsoidal incident angle**. Unit: degrees.
+   Needed for computing geolocation accuracy.
+   This information might be used to differentiate between near range and far range and apply further incident angle corrections.
+ + **em: digital elevation model**. The DEM as selected per ``dem_type`` resampled and reprojected to the match the tile size.
+ + **id: acquisition ID image**. A numerical source scene ID per pixel, e.g. 1, 2.
+   The scene corresponding to an index can be obtained from the metadata files.
+ + **lc: RTC local contributing area**. Unit: :math:`m^2 / m^2`.
+   This dataset was used during processing to convert the measurement datasets in beta nought to gamma0 RTC in radar geometry.
+   See for :cite:`small_2011` details.
+   It is expressed as the ratio between the two or a ratio of the gamma and beta reference areas:
 
-Users might create several sections in the same configuration file with parameter values that correspond to different
-processing scenarios (e.g., for different areas of interest). Note that each section must contain all necessary
-configuration parameters even if only a few are varied between the sections.
+   .. math::
+      \hat{A}_\gamma = \frac{A_\gamma}{A_\beta} = \frac{\beta^0}{\gamma^0_T}
 
-Command Line Interface
-----------------------
-Once a configuration file has been created and all of its parameters have been properly defined, it can be used to start
-the processor using the command line interface (CLI) tool provided with the ERS_NRB package.
+   This variable can be used to estimate regions of layover, foreshortening and shadow.
+   A higher value defines a larger area covered by one pixel and thus an increasing amount of foreshortening or layover as well as reduced local resolution.
+   This layer may be used to further reduce acquisition geometry effects by weighted averaging of the backscatter. See :cite:`small.etal_2021`.
+   Shadow is indicated by a value of 0.
 
-The following options are currently available:
+ + **li: local incident angle**. Unit: degrees.
+   This angle best describes the actual incidence of the radar beam on the Earth’s surface as described by the used DEM.
+   Details can be obtained from :cite:`small_2011` and :cite:`meier.etal_1993`.
+   Differences between software implementations were investigated in :cite:`truckenbrodt_2019`.
+ + **ratio**: will automatically be replaced with the following, depending on selected ``measurement``:
 
-::
+   + gs: gamma-sigma ratio: :math:`\sigma^0_T / \gamma^0_T` (if ``measurement = gamma``)
+   + sg: sigma-gamma ratio: :math:`\gamma^0_T / \sigma^0_T` (if ``measurement = sigma``)
 
-    ers_nrb --help
+   This data layer can be used to convert the provided measurement datasets in :math:`\gamma^0_T` to :math:`\sigma^0_T`.
+   According to the CARD4L NRB specification :cite:`ceos_2021`, the gamma-sigma ratio is the "Ratio of the integrated area in the Gamma projection over the integrated area in the Sigma projection (ground)".
+   Furthermore, it is stated, that "Multiplying RTC :math:`\gamma^0` by this ratio results in an estimate of RTC :math:`\sigma^0`".
+   Aligned to the formula for the local contributing area, it can be expressed as:
 
-Print a help message for the CLI tool.
+   .. math::
+      gs = \frac{\hat{A}_\gamma}{\hat{A}_\sigma} = \frac{A_\gamma}{A_\sigma} = \frac{\sigma^0_T}{\gamma^0_T}
 
-::
+SNAP Section
+^^^^^^^^^^^^
 
-    ers_nrb -c /path/to/config.ini
+Depending on the configuration of the `processor` parameter in the `PROCESSING` section, this section may be used or not.
 
-Start the processor using parameters defined in the default section of a ``config.ini`` file.
+allow_res_osv
++++++++++++++
 
-::
+Allow usage of RES orbit files (or only POE)?
 
-    ers_nrb -c /path/to/config.ini -s SECTION_NAME
+clean_edges
++++++++++++
 
-Start the processor using parameters defined in section ``SECTION_NAME`` of a ``config.ini`` file.
+Perform additional edge cleaning to remove artifacts?
+
+clean_edges_pixels
+++++++++++++++++++
+
+The number of pixels to erode when `clean_edges` is True.
+
+cleanup
++++++++
+
+Remove intermediate files after processing?
+
+dem_resampling_method
++++++++++++++++++++++
+
+The DEM resampling method.
+
+gpt_args
+++++++++
+
+SNAP GPT command line arguments.
+
+img_resampling_method
++++++++++++++++++++++
+
+The image resampling method.

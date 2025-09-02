@@ -50,13 +50,13 @@ autosummary_generate = True
 version_pyrosar = get_version('pyroSAR')
 version_spatialist = get_version('spatialist')
 
-intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
-                       'pyroSAR': ('https://pyrosar.readthedocs.io/en/v{}'
-                                   .format(version_pyrosar), None),
-                       'spatialist': ('https://spatialist.readthedocs.io/en/v{}'
-                                      .format(version_spatialist), None),
-                       'pystac': ('https://pystac.readthedocs.io/en/stable', None)
-                       }
+intersphinx_mapping = {
+    'dateutil': ('https://dateutil.readthedocs.io/en/stable', None),
+    'python': ('https://docs.python.org/3', None),
+    'pyroSAR': (f'https://pyrosar.readthedocs.io/en/v{version_pyrosar}', None),
+    's1ard': ('https://s1ard.readthedocs.io/en/latest', None),
+    'spatialist': (f'https://spatialist.readthedocs.io/en/v{version_spatialist}', None)
+}
 
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True

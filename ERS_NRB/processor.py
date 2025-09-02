@@ -21,6 +21,20 @@ import s1ard.tile_extraction as tile_ex
 
 
 def main(config_file, **kwargs):
+    """
+    Main processing function.
+    
+    Parameters
+    ----------
+    config_file: str
+        Path to the INI configuration file.
+    kwargs:
+        Additional arguments overriding configuration in `config_file`.
+
+    Returns
+    -------
+
+    """
     update = False  # update existing products? Internal development flag.
     config = get_config(config_file=config_file, **kwargs)
     log = ancil.set_logging(config=config)

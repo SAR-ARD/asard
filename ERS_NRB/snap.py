@@ -250,12 +250,6 @@ def process(scene, outdir, measurement, spacing, dem,
         Does not apply to layover-shadow mask.
     clean_edges_pixels: int
         The number of pixels to erode.
-    neighbors: list[str] or None
-        (only applies to GRD) an optional list of neighboring scenes to add
-        a buffer around the main scene using function :func:`grd_buffer`.
-        If GRDs are processed compeletely independently, gaps are introduced
-        due to a missing overlap. If `neighbors` is None or an empty list,
-        buffering is skipped.
     gpt_args: list[str] or None
         a list of additional arguments to be passed to the gpt call
 
@@ -268,17 +262,15 @@ def process(scene, outdir, measurement, spacing, dem,
 
     Examples
     --------
-    >>> from s1ard import snap
-    >>> scene = 'S1A_IW_SLC__1SDV_20200103T170700_20200103T170727_030639_0382D5_6A12.zip'
-    >>> dem = 'S1A_IW_SLC__1SDV_20200103T170700_20200103T170727_030639_0382D5_6A12_DEM_EEA10.tif'
+    >>> from ERS_NRB import snap
+    >>> scene = 'ASA_IMP_1PNESA20110820_092721_000000173105_00381_49533_0000.N1'
+    >>> dem = 'ASA_IMP_1PNESA20110820_092721_000000173105_00381_49533_0000_DEM_GLO30.tif'
     >>> outdir = '.'
     >>> spacing = 10
-    >>> rlks = 5
-    >>> azlks = 1
     >>> export_extra = ['localIncidenceAngle', 'incidenceAngleFromEllipsoid',
     >>>                 'scatteringArea', 'layoverShadowMask', 'gammaSigmaRatio']
     >>> snap.process(scene=scene, outdir=outdir, spacing=spacing, dem=dem,
-    >>>              rlks=rlks, azlks=azlks, export_extra=export_extra)
+    >>>              export_extra=export_extra)
     """
     if measurement not in ['gamma', 'sigma']:
         raise RuntimeError("'measurement' must either be 'gamma' or 'sigma'")

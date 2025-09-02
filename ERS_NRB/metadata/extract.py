@@ -1,5 +1,4 @@
 import os
-import re
 import numpy as np
 from dateutil.parser import parse as dateparse
 from spatialist import Raster
