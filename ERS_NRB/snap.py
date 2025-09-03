@@ -172,6 +172,8 @@ def pre(src, dst, workflow, allow_res_osv=True,
             else:
                 raise ValueError(f'Unsupported acquisition mode: '
                                  f'{scene.acquisition_mode}')
+        elif scene.sensor in ['ERS1', 'ERS2']:
+            source_bands = 'Intensity'
         else:
             raise ValueError(f'Unsupported sensor: {scene.sensor}')
         cal.parameters['sourceBands'] = source_bands

@@ -10,7 +10,7 @@
 #SBATCH --mail-user=<your mail address>
 #SBATCH --export=NONE
 #SBATCH --time=01:00:00
-#SBATCH --array=0-3
+#SBATCH --array=0-7
 
 set -euo pipefail
 
@@ -22,7 +22,7 @@ micromamba activate s1ard
 
 export ERS_NRB_TESTDATA="<test data storage location>"
 
-PARAM_IDS=("ASAR-APP" "ASAR-APS" "ASAR-IMP" "ASAR-IMS")
+PARAM_IDS=("ASAR-APP" "ASAR-APS" "ASAR-IMP" "ASAR-IMS" "ERS1-IMP" "ERS1-IMS" "ERS2-IMP" "ERS2-IMS")
 ID="${PARAM_IDS[$SLURM_ARRAY_TASK_ID]}"
 
 coverage run --parallel-mode --module pytest -k "$ID" test_processing.py
