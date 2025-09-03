@@ -26,7 +26,7 @@ def main(config_file, **kwargs):
     
     Parameters
     ----------
-    config_file: str
+    config_file: str or None
         Path to the INI configuration file.
     kwargs:
         Additional arguments overriding configuration in `config_file`.
