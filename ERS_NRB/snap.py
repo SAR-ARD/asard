@@ -432,20 +432,7 @@ def process(scene, outdir, measurement, spacing, dem,
     # delete intermediate files
     if cleanup:
         log.info('cleaning up')
-        if id.product == 'GRD':
-            # delete everything except *_pre.* products which are reused for buffering
-            # this needs to be improved so that these products are also removed if they
-            # are no longer needed for any buffering.
-            items = finder(target=tmpdir_scene, matchlist=['*'],
-                           foldermode=1, recursive=False)
-            for item in items:
-                if not re.search(r'_pre\.', item):
-                    if os.path.isfile(item):
-                        os.remove(item)
-                    else:
-                        shutil.rmtree(item)
-        else:
-            shutil.rmtree(tmpdir_scene)
+        shutil.rmtree(tmpdir_scene)
 
 
 def get_metadata(scene, outdir):
