@@ -245,7 +245,7 @@ def meta_dict(config, prod_meta, src_ids, compression):
         # meta['source'][uid]['azimuthLookBandwidth'] = None # TBD
         meta['source'][uid]['azimuthNumberOfLooks'] = {op_mode: src_sid[uid].meta['looks'][1]}
         meta['source'][uid]['azimuthPixelSpacing'] = {op_mode: src_sid[uid].meta['spacing'][1]}
-        meta['source'][uid]['azimuthResolution'] = {op_mode: src_sid[uid].meta['azimuthResolution']}
+        meta['source'][uid]['azimuthResolution'] = {op_mode: src_sid[uid].meta['resolution'][1]}
         meta['source'][uid]['dataGeometry'] = src_sid[uid].meta['image_geometry'].replace('_', '-').lower()
         # meta['source'][uid]['datatakeID'] = None # needed?
         meta['source'][uid]['doi'] = URL['source_doi']
@@ -256,8 +256,8 @@ def meta_dict(config, prod_meta, src_ids, compression):
         meta['source'][uid]['geom_stac_geometry_4326'] = prod_meta['geom']['geometry']
         meta['source'][uid]['geom_xml_center'] = prod_meta['geom']['center']
         meta['source'][uid]['geom_xml_envelope'] = prod_meta['geom']['envelope']
-        meta['source'][uid]['incidenceAngleMax'] = src_sid[uid].meta['incidenceAngleMax']
-        meta['source'][uid]['incidenceAngleMin'] = src_sid[uid].meta['incidenceAngleMin']
+        meta['source'][uid]['incidenceAngleMax'] = src_sid[uid].meta['incidence_fr']
+        meta['source'][uid]['incidenceAngleMin'] = src_sid[uid].meta['incidence_nr']
         meta['source'][uid]['incidenceAngleMidSwath'] = src_sid[uid].meta['incidence']
         meta['source'][uid]['instrumentAzimuthAngle'] = None  # TBD
         meta['source'][uid]['ionosphereIndicator'] = None
@@ -295,7 +295,7 @@ def meta_dict(config, prod_meta, src_ids, compression):
         # meta['source'][uid]['rangeLookBandwidth'] = None # TBD
         meta['source'][uid]['rangeNumberOfLooks'] = {op_mode: src_sid[uid].meta['looks'][0]}
         meta['source'][uid]['rangePixelSpacing'] = {op_mode: src_sid[uid].meta['spacing'][0]}
-        meta['source'][uid]['rangeResolution'] = {op_mode: src_sid[uid].meta['rangeResolution']}
+        meta['source'][uid]['rangeResolution'] = {op_mode: src_sid[uid].meta['resolution'][0]}
         meta['source'][uid]['sensorCalibration'] = URL['sensorCalibration']
         meta['source'][uid]['status'] = 'ARCHIVED'
         meta['source'][uid]['swaths'] = [op_mode]
