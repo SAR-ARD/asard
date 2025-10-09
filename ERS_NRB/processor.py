@@ -5,7 +5,7 @@ from importlib import import_module
 from osgeo import gdal
 from spatialist import bbox, intersect
 from spatialist.ancillary import finder
-from pyroSAR import identify_many, Archive
+from pyroSAR import identify, identify_many, Archive
 from ERS_NRB.config import get_config, gdal_conf
 
 import ERS_NRB.ancillary as ancil
@@ -70,33 +70,39 @@ def main(config_file, **kwargs):
     else:
         raise RuntimeError('could not select a search option. Please check your configuration.')
     
-    attr_search = ['sensor', 'mindate', 'maxdate',
-                   'aoi_tiles', 'aoi_geometry', 'date_strict']
-    dict_search = {k: config_proc[k] for k in attr_search}
-    dict_search['acquisition_mode'] = config_proc['acq_mode']
-    
-    product = 'PRI'
-    if config_proc['acq_mode'].endswith('S'):
-        product = 'SLC'
-    if config_proc['acq_mode'].endswith('M'):
-        product = 'MR'
-    dict_search['product'] = product
-    
-    selection, aoi_tiles = scene_select(archive=archive, **dict_search)
-    
-    archive.close()
-    
-    if len(selection) == 0:
-        log.error('could not find any scenes')
-        return
-    
-    log.info(f'found {len(selection)} scene(s)')
-    scenes = identify_many(selection, sortkey='start')
+    if config_proc['scene'] is None:
+        attr_search = ['sensor', 'mindate', 'maxdate',
+                       'aoi_tiles', 'aoi_geometry', 'date_strict']
+        dict_search = {k: config_proc[k] for k in attr_search}
+        dict_search['acquisition_mode'] = config_proc['acq_mode']
+        
+        product = 'PRI'
+        if config_proc['acq_mode'].endswith('S'):
+            product = 'SLC'
+        if config_proc['acq_mode'].endswith('M'):
+            product = 'MR'
+        dict_search['product'] = product
+        
+        selection, aoi_tiles = scene_select(archive=archive, **dict_search)
+        
+        archive.close()
+        
+        if len(selection) == 0:
+            log.error('could not find any scenes')
+            return
+        
+        log.info(f'found {len(selection)} scene(s)')
+        scenes = identify_many(selection, sortkey='start')
+    else:
+        if config_proc['mode'] != ['sar']:
+            raise RuntimeError("if argument 'scene' is set, the processing mode must be 'sar'")
+        scenes = [identify(config_proc['scene'])]
+        config_proc['acq_mode'] = scenes[0].acquisition_mode
+        config_proc['product'] = scenes[0].product
+        aoi_tiles = []
     
     # group scenes by absolute orbit number
     scenes_grouped = group_by_attr(scenes, lambda x: x.meta['orbitNumber_abs'])
-    
-    log.info(f'found {len(selection)} scene(s)')
     ####################################################################################################################
     # annotation layer selection
     annotation = config_proc['annotation']
