@@ -42,4 +42,4 @@ readme = { file = ["README.md"], content-type = "text/markdown" }
 [tool.setuptools_scm]
 
 [project.scripts]
-ers_nrb = "ERS_NRB.cli:cli"
+asard = "ERS_NRB.cli:cli"
