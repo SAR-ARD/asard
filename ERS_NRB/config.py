@@ -169,9 +169,9 @@ def _get_config_processing(parser, **kwargs):
         
         validate_value(k, v)
         
-        if k == 'mindate':
+        if k == 'mindate' and v is not None:
             v = proc_sec.get_datetime(k)
-        if k == 'maxdate':
+        if k == 'maxdate' and v is not None:
             date_short = re.search('^[0-9-]{10}$', v) is not None
             v = proc_sec.get_datetime(k)
             if date_short:
