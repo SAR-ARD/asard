@@ -78,6 +78,8 @@ def main(config_file, **kwargs):
     product = 'PRI'
     if config_proc['acq_mode'].endswith('S'):
         product = 'SLC'
+    if config_proc['acq_mode'].endswith('M'):
+        product = 'MR'
     dict_search['product'] = product
     
     selection, aoi_tiles = scene_select(archive=archive, **dict_search)
