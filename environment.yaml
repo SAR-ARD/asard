@@ -1,7 +1,6 @@
 name: nrb_env
 channels:
   - conda-forge
-  - defaults
 dependencies:
   - click>=7.1.0
   - gdal>=3.5.0
