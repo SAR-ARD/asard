@@ -2,16 +2,22 @@ import os
 import re
 import shutil
 from copy import deepcopy
+from importlib import import_module
 from datetime import datetime, timezone
 from spatialist.ancillary import finder
+from spatialist.raster import Raster
+from spatialist.vector import Vector, intersect, bbox
+from pyroSAR.drivers import ID, identify_many
+from pyroSAR.ancillary import Lock
 import ERS_NRB
 from ERS_NRB.metadata.extract import meta_dict
 from ERS_NRB.metadata.mapping import ARD_PATTERN
 from s1ard.ard import calc_product_start_stop, generate_unique_id
 from s1ard.metadata import xml, stac
+from s1ard.ancillary import datamask
 import logging
 
-log = logging.getLogger('s1ard')
+log = logging.getLogger('ERS_NRB')
 
 
 def append_metadata(config, prod_meta, src_ids, assets, compression):
@@ -53,6 +59,128 @@ def append_metadata(config, prod_meta, src_ids, assets, compression):
     # create metadata files
     xml.parse(meta=meta, target=prod_meta['dir_ard'], assets=assets, exist_ok=True)
     stac.parse(meta=meta, target=prod_meta['dir_ard'], assets=assets, exist_ok=True)
+
+
+def get_datasets(
+        scenes: list[str],
+        sar_dir: str,
+        extent: dict[str, int | float],
+        epsg: int,
+        processor_name: str
+) -> tuple[list[ID], list[dict[str, str]]]:
+    """
+    Collect processing output for a list of scenes. Reads metadata from all
+    source products, finds matching output files in `sar_dir` and
+    filters both lists depending on the actual overlap of each product's valid
+    data coverage with the current MGRS tile geometry. If no output is found
+    for any scene the function will raise an error.
+    To obtain the extent of valid data coverage, first a binary mask raster
+    file is created with the name `datamask.tif`, which is stored in the same
+    folder as the processing output as found by :func:`~ERS_NRB.snap.find_datasets`.
+    Then, the boundary of this binary mask is computed and stored as `datamask.gpkg`
+    (see function :func:`spatialist.vector.boundary`).
+    If the provided `extent` does not overlap with this boundary, the output is
+    discarded. This scenario might occur when the scene's geometry read from its
+    metadata overlaps with the tile but the actual extent of data does not.
+
+    Parameters
+    ----------
+    scenes:
+        List of scenes to process. Either an individual scene or multiple,
+        matching scenes (consecutive acquisitions).
+    sar_dir:
+        The directory containing the SAR datasets processed from the source
+        scenes using pyroSAR. The function will raise an error if the processing
+        output cannot be found for all scenes in `sar_dir`.
+    extent:
+        Spatial extent of the MGRS tile, derived from a
+        :class:`~spatialist.vector.Vector` object.
+    epsg:
+        The coordinate reference system as an EPSG code.
+    processor_name:
+        The name of the used SAR processor. The function `find_datasets` of the
+        respective processor module is used.
+
+    Returns
+    -------
+        List of :class:`~pyroSAR.drivers.ID` objects of all source products
+        that overlap with the current MGRS tile and a list of SAR processing output
+        files that match each :class:`~pyroSAR.drivers.ID` object of `ids`.
+        The format of the latter is a list of dictionaries per scene with keys as
+        described by e.g. :func:`ERS_NRB.snap.find_datasets`.
+
+    See Also
+    --------
+    :func:`ERS_NRB.snap.find_datasets`
+    """
+    processor = import_module(f'ERS_NRB.{processor_name}')
+    ids = identify_many(scenes, sortkey='start')
+    datasets = []
+    for i, _id in enumerate(ids):
+        log.debug(f'collecting processing output for scene {os.path.basename(_id.scene)}')
+        files = processor.find_datasets(scene=_id.scene, outdir=sar_dir, epsg=epsg)
+        if files is not None:
+            base = os.path.splitext(os.path.basename(_id.scene))[0]
+            ocn = re.sub('(?:SLC_|GRD[FHM])_1', 'OCN__2', base)[:-5]
+            # allow 1 second tolerance
+            s_start = int(ocn[31])
+            s_stop = int(ocn[47])
+            ocn_list = list(ocn)
+            s = 1
+            ocn_list[31] = f'[{s_start - s}{s_start}{s_start + s}]'
+            ocn_list[47] = f'[{s_stop - s}{s_stop}{s_stop + s}]'
+            ocn = ''.join(ocn_list)
+            log.debug(f'searching for OCN products with pattern {ocn}')
+            ocn_match = finder(target=sar_dir, matchlist=[ocn], regex=True,
+                               foldermode=2, recursive=False)
+            if len(ocn_match) > 0:
+                for v in ['owiNrcsCmod', 'owiEcmwfWindSpeed', 'owiEcmwfWindDirection']:
+                    ocn_tif = os.path.join(ocn_match[0], f'{v}.tif')
+                    if os.path.isfile(ocn_tif):
+                        if v.endswith('Speed'):
+                            files['wm_ref_speed'] = ocn_tif
+                        elif v.endswith('Direction'):
+                            files['wm_ref_direction'] = ocn_tif
+                        else:
+                            files['wm'] = ocn_tif
+            datasets.append(files)
+        else:
+            base = os.path.basename(_id.scene)
+            msg = f'cannot find processing output for scene {base} and CRS EPSG:{epsg}'
+            raise RuntimeError(msg)
+    
+    i = 0
+    while i < len(datasets):
+        log.debug(f'checking tile overlap for scene {os.path.basename(ids[i].scene)}')
+        measurements = [datasets[i][x] for x in datasets[i].keys()
+                        if re.search('[gs]-lin', x)]
+        dm_ras = os.path.join(os.path.dirname(measurements[0]), 'datamask.tif')
+        dm_vec = dm_ras.replace('.tif', '.gpkg')
+        dm_vec = datamask(measurement=measurements[0], dm_ras=dm_ras, dm_vec=dm_vec)
+        if dm_vec is None:
+            del ids[i], datasets[i]
+            continue
+        with Lock(dm_vec, soft=True):
+            with Vector(dm_vec) as bounds:
+                with bbox(extent, epsg) as tile_geom:
+                    inter = intersect(bounds, tile_geom)
+                    if inter is not None:
+                        with Raster(dm_ras) as ras:
+                            inter_min = ras.res[0] * ras.res[1]
+                        if inter.getArea() < inter_min:
+                            inter.close()
+                            inter = None
+                    if inter is None:
+                        log.debug('no overlap, removing scene')
+                        del ids[i]
+                        del datasets[i]
+                    else:
+                        log.debug('overlap detected')
+                        # Add dm_ras to the datasets if it overlaps with the current tile
+                        datasets[i]['datamask'] = dm_ras
+                        i += 1
+                        inter.close()
+    return ids, datasets
 
 
 def product_info(product_type, src_ids, tile_id, extent, epsg,
