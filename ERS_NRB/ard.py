@@ -259,7 +259,7 @@ def product_info(product_type, src_ids, tile_id, extent, epsg,
     skeleton_dir = ('{mission}{sensor}{mode}{product_type}_{start}_{duration:04}__'
                     '{orbitnumber_rel:03X}_S{id}_{phase}{cycle:03}_{polarization}')
     skeleton_files = ('{mission}{sensor}{mode}{product_type}-{start}-{duration:04}--'
-                      '{orbitnumber_rel:03x}-S{id}-{phase}{cycle:03}-{polarization}')
+                      '{orbitnumber_rel:03x}-s{id}-{phase}{cycle:03}-{polarization}')
     
     meta['product_base'] = skeleton_dir.format(**meta_name)
     meta['dir_ard'] = os.path.join(dir_out, meta['product_base'])
