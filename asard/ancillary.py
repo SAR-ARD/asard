@@ -6,9 +6,9 @@ from importlib import import_module
 from osgeo import gdal
 import spatialist
 import pyroSAR
-import ERS_NRB
+import asard
 
-log = logging.getLogger('ERS_NRB')
+log = logging.getLogger('asard')
 
 
 def set_logging(config, debug=False):
@@ -29,7 +29,7 @@ def set_logging(config, debug=False):
     """
     level = logging.DEBUG if debug else logging.INFO
     
-    logger = logging.getLogger('ERS_NRB')
+    logger = logging.getLogger('asard')
     logger.setLevel(level)
     
     log_format = "[%(asctime)s] [%(levelname)5s] %(message)s"
@@ -78,14 +78,14 @@ def _log_process_config(logger, config):
         Dictionary of the parsed config parameters for the current process.
     """
     sw_versions = {
-        'ERS_NRB': ERS_NRB.__version__,
+        'asard': asard.__version__,
         'python': sys.version,
         'python-pyroSAR': pyroSAR.__version__,
         'python-spatialist': spatialist.__version__,
         'python-GDAL': gdal.__version__}
     
     processor_name = config['processing']['processor']
-    processor = import_module(f'ERS_NRB.{processor_name}')
+    processor = import_module(f'asard.{processor_name}')
     sw_versions.update(processor.version_dict())
     
     max_len_sw = len(max(sw_versions.keys(), key=len))

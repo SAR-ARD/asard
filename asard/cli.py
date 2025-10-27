@@ -8,8 +8,8 @@ import click
               help='Print asard version information and exit. Overrides all other arguments.')
 def cli(version):
     if version:
-        import ERS_NRB
-        print(ERS_NRB.__version__)
+        import asard
+        print(asard.__version__)
 
 
 @cli.group(name='rb',
@@ -43,6 +43,6 @@ def process(ctx, config_file, debug):
 
     asard rb process -c config.ini --acq_mode IMP --annotation dm,id
     """
-    from ERS_NRB import process
+    from asard import process
     extra = {ctx.args[i][2:]: ctx.args[i + 1] for i in range(0, len(ctx.args), 2)}
     process(config_file=config_file, debug=debug, **extra)

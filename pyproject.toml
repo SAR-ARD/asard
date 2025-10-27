@@ -2,7 +2,7 @@
 requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "wheel"]
 
 [project]
-name = "ERS_NRB"
+name = "asard"
 description = "Prototype processor for the ERS/Envisat Normalized Radar Backscatter (NRB) product"
 requires-python = ">=3.8"
 license = { file = "LICENSE.txt" }
@@ -19,8 +19,8 @@ classifiers = [
 dynamic = ["version", "readme", "dependencies"]
 
 [project.urls]
-repository = "https://github.com/SAR-ARD/ERS_NRB"
-documentation = "https://ers_nrb.readthedocs.io/en/latest/"
+repository = "https://github.com/SAR-ARD/asard"
+documentation = "https://asard.readthedocs.io/en/latest/"
 
 [project.optional-dependencies]
 test = ["pytest", "requests"]
@@ -30,10 +30,10 @@ docs = ["sphinx", "sphinxcontrib-bibtex", "nbsphinx", "sphinx_rtd_theme", "sphin
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["ERS_NRB"]
+include = ["asard"]
 
 [tool.setuptools.package-data]
-"ERS_NRB" = ["resources/*"]
+"asard" = ["resources/*"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
@@ -42,4 +42,4 @@ readme = { file = ["README.md"], content-type = "text/markdown" }
 [tool.setuptools_scm]
 
 [project.scripts]
-asard = "ERS_NRB.cli:cli"
+asard = "asard.cli:cli"

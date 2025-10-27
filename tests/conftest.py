@@ -17,11 +17,11 @@ def tmp_home(monkeypatch, tmp_path):
 @pytest.fixture
 def testdata_dir():
     try:
-        out = Path(os.environ['ERS_NRB_TESTDATA'])
+        out = Path(os.environ['ASARD_TESTDATA'])
     except KeyError:
-        raise RuntimeError('ERS_NRB_TESTDATA environment variable not set')
+        raise RuntimeError('ASARD_TESTDATA environment variable not set')
     if not out.is_dir():
-        raise RuntimeError(f'ERS_NRB_TESTDATA is not an existing directory: {out}')
+        raise RuntimeError(f'ASARD_TESTDATA is not an existing directory: {out}')
     
     scenes = [
         'ASA_APP_1PNESA20110217_101056_000000163099_00324_46890_0000.N1',

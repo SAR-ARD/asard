@@ -5,7 +5,7 @@ API Documentation
 Configuration
 -------------
 
-.. automodule:: ERS_NRB.config
+.. automodule:: asard.config
     :members:
     :undoc-members:
     :show-inheritance:
@@ -21,21 +21,21 @@ Configuration
 Processing
 ----------
 
-.. automodule:: ERS_NRB.processor
+.. automodule:: asard.processor
     :members:
     :undoc-members:
     :show-inheritance:
 
 SAR
 ^^^
-`ERS_NRB` offers a mechanism to plug in different SAR processors.
+`asard` offers a mechanism to plug in different SAR processors.
 The software offers a `snap` reference implementation module that can be translated to other processors.
-All "main interface" functions need to be implemented so that `ERS_NRB` can fully interact with the module.
+All "main interface" functions need to be implemented so that `asard` can fully interact with the module.
 
 SNAP
 ++++
 
-.. automodule:: ERS_NRB.snap
+.. automodule:: asard.snap
     :members:
     :undoc-members:
     :show-inheritance:
@@ -62,7 +62,7 @@ SNAP
 ARD
 ^^^
 
-.. automodule:: ERS_NRB.ard
+.. automodule:: asard.ard
     :members:
     :undoc-members:
     :show-inheritance:
@@ -76,7 +76,7 @@ ARD
 Ancillary Functions
 -------------------
 
-.. automodule:: ERS_NRB.ancillary
+.. automodule:: asard.ancillary
     :members:
     :undoc-members:
     :show-inheritance:
@@ -92,7 +92,7 @@ Metadata
 Extraction
 ^^^^^^^^^^
 
-.. automodule:: ERS_NRB.metadata.extract
+.. automodule:: asard.metadata.extract
     :members:
     :undoc-members:
     :show-inheritance:

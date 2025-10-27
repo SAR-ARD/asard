@@ -5,9 +5,9 @@ from spatialist import Raster
 from spatialist.ancillary import finder
 from spatialist.raster import rasterize
 
-import ERS_NRB
-from ERS_NRB import snap
-from ERS_NRB.metadata.mapping import ORB_MAP, NOISE_MAP, URL as URL_PACKAGE
+import asard
+from asard import snap
+from asard.metadata.mapping import ORB_MAP, NOISE_MAP, URL as URL_PACKAGE
 
 from cesard.metadata.mapping import DEM_MAP, URL as URL_BASE, LERC_ERR_THRES
 from cesard.metadata.extract import calc_enl, geometry_from_vec, calc_performance_estimates, vec_from_srccoords
@@ -220,8 +220,8 @@ def meta_dict(config, prod_meta, src_ids, compression):
     meta['prod']['location'] = 'TBD'
     meta['prod']['processingLevel'] = 'Level 2'
     meta['prod']['processingMode'] = 'PROTOTYPE'
-    meta['prod']['processorName'] = 'ERS_NRB'
-    meta['prod']['processorVersion'] = ERS_NRB.__version__
+    meta['prod']['processorName'] = 'asard'
+    meta['prod']['processorVersion'] = asard.__version__
     meta['prod']['productName'] = 'Normalised Radar Backscatter'
     meta['prod']['productName-short'] = 'NRB'
     meta['prod']['pxSpacingColumn'] = str(prod_meta['res'][0])

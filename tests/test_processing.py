@@ -1,5 +1,5 @@
 import pytest
-import ERS_NRB.processor as process
+import asard.processor as process
 
 
 @pytest.mark.parametrize(

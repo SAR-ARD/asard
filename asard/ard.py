@@ -10,9 +10,9 @@ from spatialist.vector import Vector, intersect, bbox
 from spatialist.auxil import gdalbuildvrt, gdalwarp
 from pyroSAR.drivers import ID, identify_many
 from pyroSAR.ancillary import Lock
-import ERS_NRB
-from ERS_NRB.metadata.extract import meta_dict
-from ERS_NRB.metadata.mapping import ARD_PATTERN
+import asard
+from asard.metadata.extract import meta_dict
+from asard.metadata.mapping import ARD_PATTERN
 from cesard import dem
 from cesard.ard import calc_product_start_stop, create_data_mask, create_acq_id_image, create_rgb_vrt, create_vrt
 from cesard.metadata import xml, stac
@@ -20,7 +20,7 @@ from cesard.metadata.mapping import LERC_ERR_THRES
 from cesard.ancillary import datamask, generate_unique_id, vrt_add_overviews, get_tmp_name
 import logging
 
-log = logging.getLogger('ERS_NRB')
+log = logging.getLogger('asard')
 
 
 def append_metadata(config, prod_meta, src_ids, assets, compression):
@@ -49,7 +49,7 @@ def append_metadata(config, prod_meta, src_ids, assets, compression):
                      src_ids=src_ids, compression=compression)
     
     # copy support files
-    schema_dir = os.path.join(ERS_NRB.__path__[0], 'validation', 'schemas')
+    schema_dir = os.path.join(asard.__path__[0], 'validation', 'schemas')
     if os.path.isdir(schema_dir):
         schemas = os.listdir(schema_dir)
         for schema in schemas:
@@ -93,7 +93,7 @@ def format(
     config:
         Dictionary of the parsed config parameters for the current process.
     prod_meta:
-        Product metadata as returned by :func:`~ERS_NRB.ard.product_info`.
+        Product metadata as returned by :func:`~asard.ard.product_info`.
     src_ids:
         List of scenes to process. Either a single scene or multiple, matching scenes (consecutive acquisitions).
         All scenes are expected to overlap with `extent` and an error will be thrown if the processing output
@@ -249,7 +249,7 @@ def format(
         dm_path = os.path.join(prod_meta['dir_ard'], 'annotation', dm_path_base)
         if not os.path.isfile(dm_path):
             log.info(f"creating {os.path.relpath(dm_path, prod_meta['dir_ard'])}")
-            processor = import_module(f'ERS_NRB.{processor_name}')
+            processor = import_module(f'asard.{processor_name}')
             lsm_encoding = processor.lsm_encoding()
             create_data_mask(outname=dm_path, datasets=sar_assets, extent=extent, epsg=epsg,
                              driver=driver, creation_opt=write_options['dm'],
@@ -384,7 +384,7 @@ def get_datasets(
     for any scene the function will raise an error.
     To obtain the extent of valid data coverage, first a binary mask raster
     file is created with the name `datamask.tif`, which is stored in the same
-    folder as the processing output as found by :func:`~ERS_NRB.snap.find_datasets`.
+    folder as the processing output as found by :func:`~cesard.snap.find_datasets`.
     Then, the boundary of this binary mask is computed and stored as `datamask.gpkg`
     (see function :func:`spatialist.vector.boundary`).
     If the provided `extent` does not overlap with this boundary, the output is
@@ -415,13 +415,13 @@ def get_datasets(
         that overlap with the current MGRS tile and a list of SAR processing output
         files that match each :class:`~pyroSAR.drivers.ID` object of `ids`.
         The format of the latter is a list of dictionaries per scene with keys as
-        described by e.g. :func:`ERS_NRB.snap.find_datasets`.
+        described by e.g. :func:`cesard.snap.find_datasets`.
 
     See Also
     --------
-    :func:`ERS_NRB.snap.find_datasets`
+    :func:`cesard.snap.find_datasets`
     """
-    processor = import_module(f'ERS_NRB.{processor_name}')
+    processor = import_module(f'asard.{processor_name}')
     ids = identify_many(scenes, sortkey='start')
     datasets = []
     for i, _id in enumerate(ids):

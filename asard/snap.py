@@ -16,7 +16,7 @@ from cesard.snap import find_datasets, lsm_encoding, version_dict
 
 import logging
 
-log = logging.getLogger('ERS_NRB')
+log = logging.getLogger('asard')
 
 
 def config_to_string(config):
@@ -263,7 +263,7 @@ def process(scene, outdir, measurement, spacing, dem,
 
     Examples
     --------
-    >>> from ERS_NRB import snap
+    >>> from asard import snap
     >>> scene = 'ASA_IMP_1PNESA20110820_092721_000000173105_00381_49533_0000.N1'
     >>> dem = 'ASA_IMP_1PNESA20110820_092721_000000173105_00381_49533_0000_DEM_GLO30.tif'
     >>> outdir = '.'

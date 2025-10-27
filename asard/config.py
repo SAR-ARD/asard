@@ -33,13 +33,13 @@ def get_keys(section):
                 'tmp_dir', 'wbm_dir', 'work_dir']
     else:
         try:
-            module = import_module(f'ERS_NRB.{section}')
+            module = import_module(f'asard.{section}')
         except ModuleNotFoundError:
             raise RuntimeError(f"unknown section: {section}.")
         try:
             return module.get_config_keys()
         except AttributeError:
-            raise RuntimeError(f"missing function ERS_NRB.{section}.get_config_keys().")
+            raise RuntimeError(f"missing function asard.{section}.get_config_keys().")
 
 
 def read_config_file(config_file=None):
@@ -64,7 +64,7 @@ def read_config_file(config_file=None):
         if not os.path.isfile(config_file):
             raise FileNotFoundError(f"Config file {config_file} does not exist.")
     else:
-        with importlib.resources.path(package='ERS_NRB.resources',
+        with importlib.resources.path(package='asard.resources',
                                       resource='config.ini') as path:
             config_file = str(path)
     
@@ -96,7 +96,7 @@ def get_config(config_file=None, **kwargs):
     out = {'processing': _get_config_processing(parser, **kwargs_proc)}
     
     processor_name = out['processing']['processor']
-    processor = import_module(f'ERS_NRB.{processor_name}')
+    processor = import_module(f'asard.{processor_name}')
     kwargs_sar = {k: v for k, v in kwargs.items() if k in get_keys(processor_name)}
     out[processor_name] = processor.get_config_section(parser, **kwargs_sar)
     

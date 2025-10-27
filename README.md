@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <a>ERS_NRB</a>
+  <a>asard</a>
 </h1>
 <h3 align="center">A prototype processor for the ASAR and ERS Normalised Radar Backscatter product</h3>
 

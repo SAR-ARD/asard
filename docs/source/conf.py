@@ -3,9 +3,9 @@ import os
 import datetime
 from importlib.metadata import version as get_version
 
-project = 'ERS_NRB'
-project_latex = r'ERS\_NRB'
-authors = 'the ERS_NRB Developers'
+project = 'asard'
+project_latex = r'asard'
+authors = 'the asard Developers'
 authors_latex = r'the ERS\_NRB Developers'
 year = datetime.datetime.now().year
 

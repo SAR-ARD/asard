@@ -22,9 +22,9 @@ COPY docker/update_snap.sh /tmp/update_snap.sh
 RUN chmod +x update_snap.sh
 RUN /tmp/update_snap.sh
 
-FROM snap as ers_nrb
+FROM snap as asard
 
-# install ERS_NRB
+# install asard
 SHELL [ "/bin/bash", "--login", "-c" ]
 
 COPY environment-tpz.yaml environment.yaml

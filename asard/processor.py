@@ -6,10 +6,10 @@ from osgeo import gdal
 from spatialist import bbox, intersect
 from spatialist.ancillary import finder
 from pyroSAR import identify, identify_many, Archive
-from ERS_NRB.config import get_config, gdal_conf
+from asard.config import get_config, gdal_conf
 
-import ERS_NRB.ancillary as ancil
-from ERS_NRB.ard import product_info, append_metadata, get_datasets, format
+import asard.ancillary as ancil
+from asard.ard import product_info, append_metadata, get_datasets, format
 
 gdal.UseExceptions()
 
@@ -34,16 +34,16 @@ def main(config_file, **kwargs):
     -------
 
     """
-    update = False  # update existing products? Internal development flag.
+    update = True  # update existing products? Internal development flag.
     config = get_config(config_file=config_file, **kwargs)
     log = ancil.set_logging(config=config)
     config_proc = config['processing']
     processor_name = config_proc['processor']
-    processor = import_module(f'ERS_NRB.{processor_name}')
+    processor = import_module(f'asard.{processor_name}')
     config_sar = config[processor_name]
     gdal_prms = gdal_conf(config=config)
     
-    spacings = {'AP': 10, 'IM': 10, 'WS': 60}
+    spacings = {'AP': 60, 'IM': 60, 'WS': 60}
     config_sar['spacing'] = spacings[config_proc['acq_mode'][:2]]
     
     sar_flag = 'sar' in config_proc['mode']

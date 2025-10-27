@@ -6,11 +6,11 @@ configuration file but can also be modified via the command line.
 
 The configuration file follows the INI format, which uses plain text to store properties as key-value pairs.
 INI files can be created and opened with any text editor.
-The `config.ini` file used with the `ERS_NRB` package requires three sections: ``PROCESSING`` and ``METADATA``
+The `config.ini` file used with the `asard` package requires three sections: ``PROCESSING`` and ``METADATA``
 and a section for the SAR processor, e.g. ``SNAP``.
-An example `config.ini` file for the `ERS_NRB` package can be found here:
+An example `config.ini` file for the `asard` package can be found here:
 
-https://github.com/SAR-ARD/ERS_NRB/blob/main/ERS_NRB/resources/config.ini
+https://github.com/SAR-ARD/asard/blob/main/asard/resources/config.ini
 
 The file's configuration will also be used as default if not specified by the user.
 
@@ -30,7 +30,7 @@ See below for further details.
 Command Line Usage
 ------------------
 
-The `ERS_NRB` package comes with a command line interface (CLI) tool ``asarrb`` with two subcommands ``init`` and ``process`` to initialize configuration and run the processing, respectively.
+The `asard` package comes with a command line interface (CLI) tool ``asarrb`` with two subcommands ``init`` and ``process`` to initialize configuration and run the processing, respectively.
 
 The base command can be used to print documentation and the package version:
 

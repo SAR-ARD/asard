@@ -2,8 +2,8 @@ ARD Production
 ==============
 
 The following sections give a brief overview of the major components of creating an ERS/Envisat NRB product.
-All steps are comprised in function :func:`ERS_NRB.processor.main`.
-`ERS_NRB` makes use of the `cesard <https://github.com/SAR-ARD/cesard>`_ package.
+All steps are comprised in function :func:`asard.processor.main`.
+`asard` makes use of the `cesard <https://github.com/SAR-ARD/cesard>`_ package.
 
 MGRS Gridding
 -------------
@@ -43,12 +43,12 @@ SAR Processing
 SNAP
 ====
 
-The central function for processing backscatter data with SNAP is :func:`ERS_NRB.snap.process`. It will perform all necessary steps to
+The central function for processing backscatter data with SNAP is :func:`asard.snap.process`. It will perform all necessary steps to
 generate radiometrically terrain corrected gamma/sigma naught backscatter plus all relevant additional datasets like
 local incident angle and local contribution area (see argument ``export_extra``).
 In a full processor run, the following functions are called in sequence:
 
-- :func:`ERS_NRB.snap.pre`: general pre-processing including
+- :func:`asard.snap.pre`: general pre-processing including
 
   + Orbit state vector enhancement
   + Calibration to beta naught (for RTC)
@@ -75,7 +75,7 @@ ARD Formatting
 During SAR processing, files covering a whole scene are created. In this last step, the scene-based structure is converted to the MGRS tile structure.
 If one tile overlaps with multiple scenes, these scenes are first virtually mosaiced using VRT files.
 The files are then subsetted to the actual tile extent, converted to Cloud Optimized GeoTIFFs (COG), and renamed to the NRB naming scheme.
-All steps are performed by :func:`ERS_NRB.ard.format`.
+All steps are performed by :func:`asard.ard.format`.
 The actual file format conversion is done with :func:`spatialist.auxil.gdalwarp`, which is a simple wrapper around the gdalwarp utility of GDAL.
 
 After all COG files have been created, GDAL VRT files are written for log scaling and conversion to other backscatter conventions using function :func:`cesard.ard.create_vrt`.

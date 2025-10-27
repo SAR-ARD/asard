@@ -20,7 +20,7 @@ module load glib
 source $HOME/.bashrc
 micromamba activate s1ard
 
-export ERS_NRB_TESTDATA="<test data storage location>"
+export ASARD_TESTDATA="<test data storage location>"
 
 PARAM_IDS=("ASAR-APP" "ASAR-APS" "ASAR-IMP" "ASAR-IMS" "ERS1-IMP" "ERS1-IMS" "ERS2-IMP" "ERS2-IMS")
 ID="${PARAM_IDS[$SLURM_ARRAY_TASK_ID]}"
