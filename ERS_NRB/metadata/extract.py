@@ -7,10 +7,10 @@ from spatialist.raster import rasterize
 
 import ERS_NRB
 from ERS_NRB import snap
-from ERS_NRB.metadata.mapping import ORB_MAP, NOISE_MAP, URL
+from ERS_NRB.metadata.mapping import ORB_MAP, NOISE_MAP, URL as URL_PACKAGE
 
-from s1ard.metadata.mapping import DEM_MAP, URL, LERC_ERR_THRES
-from s1ard.metadata.extract import calc_enl, geometry_from_vec, calc_performance_estimates, _vec_from_srccoords
+from cesard.metadata.mapping import DEM_MAP, URL as URL_BASE, LERC_ERR_THRES
+from cesard.metadata.extract import calc_enl, geometry_from_vec, calc_performance_estimates, vec_from_srccoords
 
 
 def get_prod_meta(tif, src_ids, sar_dir):
@@ -50,7 +50,7 @@ def get_prod_meta(tif, src_ids, sar_dir):
         out['geom'] = geometry_from_vec(vectorobject=vec)
         
         # Calculate number of nodata border pixels based on source scene(s) footprint
-        with _vec_from_srccoords(coord_list=coord_list, crs=4326) as srcvec:
+        with vec_from_srccoords(coord_list=coord_list, crs=4326) as srcvec:
             ras_srcvec = rasterize(vectorobject=srcvec, reference=ras, burn_values=[1])
             arr_srcvec = ras_srcvec.array()
             out['nodata_borderpx'] = np.count_nonzero(np.isnan(arr_srcvec))
@@ -92,6 +92,9 @@ def meta_dict(config, prod_meta, src_ids, compression):
         A dictionary containing an extensive collection of metadata for the
         ARD product as well as source products.
     """
+    
+    URL = URL_BASE
+    URL.update(URL_PACKAGE)
     
     meta = {'prod': {},
             'source': {},

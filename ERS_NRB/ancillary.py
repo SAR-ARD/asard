@@ -8,7 +8,7 @@ import spatialist
 import pyroSAR
 import ERS_NRB
 
-log = logging.getLogger('s1ard')
+log = logging.getLogger('ERS_NRB')
 
 
 def set_logging(config, debug=False):
@@ -57,10 +57,10 @@ def set_logging(config, debug=False):
     log_pyro.setLevel(level)
     log_pyro.addHandler(handler)
     
-    # add s1ard logger
-    log_s1ard = logging.getLogger('s1ard')
-    log_s1ard.setLevel(level)
-    log_s1ard.addHandler(handler)
+    # add cesard logger
+    log_cesard = logging.getLogger('cesard')
+    log_cesard.setLevel(level)
+    log_cesard.addHandler(handler)
     
     return logger
 

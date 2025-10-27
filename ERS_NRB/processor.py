@@ -9,15 +9,14 @@ from pyroSAR import identify, identify_many, Archive
 from ERS_NRB.config import get_config, gdal_conf
 
 import ERS_NRB.ancillary as ancil
-from ERS_NRB.ard import product_info, append_metadata, get_datasets
+from ERS_NRB.ard import product_info, append_metadata, get_datasets, format
 
 gdal.UseExceptions()
 
-from s1ard import dem
-from s1ard.ard import format
-from s1ard.search import scene_select
-from s1ard.ancillary import get_max_ext, group_by_attr
-import s1ard.tile_extraction as tile_ex
+from cesard import dem
+from cesard.search import scene_select
+from cesard.ancillary import get_max_ext, group_by_attr
+import cesard.tile_extraction as tile_ex
 
 
 def main(config_file, **kwargs):

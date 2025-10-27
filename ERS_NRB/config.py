@@ -6,7 +6,7 @@ import configparser
 from datetime import timedelta
 from dateutil.parser import parse as dateparse
 from osgeo import gdal
-from s1ard.config import keyval_check, validate_options, validate_value
+from cesard.config import keyval_check, validate_options, validate_value
 
 
 def get_keys(section):

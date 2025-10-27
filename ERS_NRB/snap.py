@@ -1,5 +1,4 @@
 import os
-import re
 import shutil
 from spatialist.ancillary import finder
 from pyroSAR import identify
@@ -7,17 +6,17 @@ from pyroSAR.snap.auxil import gpt, parse_recipe, parse_node, \
     orb_parametrize
 from pyroSAR.ancillary import Lock, LockCollection
 
-from s1ard.tile_extraction import aoi_from_scene
-from s1ard.ancillary import datamask
-from s1ard.config import keyval_check
-from s1ard.snap import mli, rtc, gsr, sgr, geo, postprocess
+from cesard.tile_extraction import aoi_from_scene
+from cesard.ancillary import datamask
+from cesard.config import keyval_check
+from cesard.snap import mli, rtc, gsr, sgr, geo, postprocess
 
 # do not remove, needed for interface
-from s1ard.snap import version_dict
+from cesard.snap import find_datasets, lsm_encoding, version_dict
 
 import logging
 
-log = logging.getLogger('s1ard')
+log = logging.getLogger('ERS_NRB')
 
 
 def config_to_string(config):
@@ -215,12 +214,12 @@ def process(scene, outdir, measurement, spacing, dem,
     measurement: {'sigma', 'gamma'}
         the backscatter measurement convention:
 
-        - gamma: RTC gamma nought (:math:`\gamma^0_T`)
-        - sigma: RTC sigma nought (:math:`\sigma^0_T`)
+        - gamma: RTC gamma nought (:math:`\\gamma^0_T`)
+        - sigma: RTC sigma nought (:math:`\\sigma^0_T`)
     spacing: int or float
         The output pixel spacing in meters.
     dem: str
-        The DEM filename. Can be created with :func:`s1ard.dem.mosaic`.
+        The DEM filename. Can be created with :func:`cesard.dem.mosaic`.
     dem_resampling_method: str
         The DEM resampling method.
     img_resampling_method: str
@@ -236,8 +235,8 @@ def process(scene, outdir, measurement, spacing, dem,
         Options:
 
          - DEM
-         - gammaSigmaRatio: :math:`\sigma^0_T / \gamma^0_T`
-         - sigmaGammaRatio: :math:`\gamma^0_T / \sigma^0_T`
+         - gammaSigmaRatio: :math:`\\sigma^0_T / \\gamma^0_T`
+         - sigmaGammaRatio: :math:`\\gamma^0_T / \\sigma^0_T`
          - incidenceAngleFromEllipsoid
          - layoverShadowMask
          - localIncidenceAngle

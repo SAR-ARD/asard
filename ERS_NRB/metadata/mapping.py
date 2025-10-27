@@ -97,11 +97,6 @@ URL = {
     'griddingConventionURL': 'https://www.mgrs-data.org/data/documents/nga_mgrs_doc.pdf',
     'noiseRemovalAlgorithm': None,
     'orbitDataAccess': None,
-    'platformReference': {
-        'envisat-1': 'https://database.eohandbook.com/database/missionsummary.aspx?missionID=2',
-        'ers-1': 'https://database.eohandbook.com/database/missionsummary.aspx?missionID=220',
-        'ers-2': 'https://database.eohandbook.com/database/missionsummary.aspx?missionID=221'
-    },
     'radiometricAccuracyReference': None,
     'RTCAlgorithm': 'https://doi.org/10.1109/Tgrs.2011.2120616',
     'sensorCalibration': None,
