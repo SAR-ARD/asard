@@ -4,11 +4,11 @@ requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "wheel"]
 [project]
 name = "asard"
 description = "Prototype processor for the ERS/Envisat Normalized Radar Backscatter (NRB) product"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = { file = "LICENSE.txt" }
 maintainers = [
-    { name = "Ricardo Noguera", email = "ricardo.noguera@telespazio.com" },
-    { name = "John Truckenbrodt", email = "john.truckenbrodt@dlr.de" }
+    { name = "John Truckenbrodt", email = "john.truckenbrodt@dlr.de" },
+    { name = "Ricardo Noguera", email = "ricardo.noguera@telespazio.com" }
 ]
 classifiers = [
     "License :: OSI Approved :: MIT License",
