@@ -71,7 +71,25 @@ ARD
         :nosignatures:
 
         append_metadata
+        get_datasets
+        format
         product_info
+
+OSV file handling
+-----------------
+
+.. automodule:: asard.osv
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+    .. autosummary::
+        :nosignatures:
+
+        asar_osv_meta
+        download_asar
+        download_ers
+        get
 
 Ancillary Functions
 -------------------

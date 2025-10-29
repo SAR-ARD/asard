@@ -6,8 +6,8 @@ from osgeo import gdal
 from spatialist import bbox, intersect
 from spatialist.ancillary import finder
 from pyroSAR import identify, identify_many, Archive
-from asard.config import get_config, gdal_conf
 
+from asard.config import get_config, gdal_conf
 import asard.ancillary as ancil
 from asard.ard import product_info, append_metadata, get_datasets, format
 
