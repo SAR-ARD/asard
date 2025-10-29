@@ -34,7 +34,7 @@ def main(config_file, **kwargs):
     -------
 
     """
-    update = True  # update existing products? Internal development flag.
+    update = False  # update existing products? Internal development flag.
     config = get_config(config_file=config_file, **kwargs)
     log = ancil.set_logging(config=config)
     config_proc = config['processing']
@@ -43,7 +43,7 @@ def main(config_file, **kwargs):
     config_sar = config[processor_name]
     gdal_prms = gdal_conf(config=config)
     
-    spacings = {'AP': 60, 'IM': 60, 'WS': 60}
+    spacings = {'AP': 10, 'IM': 10, 'WS': 60}
     config_sar['spacing'] = spacings[config_proc['acq_mode'][:2]]
     
     sar_flag = 'sar' in config_proc['mode']
