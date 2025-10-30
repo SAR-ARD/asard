@@ -51,6 +51,7 @@ version_pyrosar = get_version('pyroSAR')
 version_spatialist = get_version('spatialist')
 
 intersphinx_mapping = {
+    'cesard': ('https://cesard.readthedocs.io/en/latest', None),
     'dateutil': ('https://dateutil.readthedocs.io/en/stable', None),
     'python': ('https://docs.python.org/3', None),
     'pyroSAR': (f'https://pyrosar.readthedocs.io/en/v{version_pyrosar}', None),

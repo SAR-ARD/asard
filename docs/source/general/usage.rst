@@ -30,35 +30,35 @@ See below for further details.
 Command Line Usage
 ------------------
 
-The `asard` package comes with a command line interface (CLI) tool ``asarrb`` with two subcommands ``init`` and ``process`` to initialize configuration and run the processing, respectively.
+The `asard` package comes with a command line interface (CLI) tool ``asard rb`` with two subcommands ``init`` and ``process`` to initialize configuration and run the processing, respectively.
 
 The base command can be used to print documentation and the package version:
 
 ::
 
-    asarrb --help
+    asard rb --help
 
 ::
 
-    asarrb --version
+    asard rb --version
 
-The ``asarrb init`` command can be used to initialize a configuration file from the package's default file and change some of the defaults.
+The ``asard rb init`` command can be used to initialize a configuration file from the package's default file and change some of the defaults.
 
 ::
 
-    asarrb init -c config.ini --work_dir /path/to/work_dir
+    asard rb init -c config.ini --work_dir /path/to/work_dir
 
 Alternatively, a previously created configuration file can be used as base:
 
 ::
 
-    asarrb init -c config.ini -s config_source.ini --work_dir /path/to/work_dir
+    asard rb init -c config.ini -s config_source.ini --work_dir /path/to/work_dir
 
 Just like with ``work_dir``, all configuration parameters can be modified via the CLI:
 
 ::
 
-    asarrb init -c config.ini --work_dir /path/to/work_dir --acq_mode IW --annotation dm,id
+    asard rb init -c config.ini --work_dir /path/to/work_dir --acq_mode IW --annotation dm,id
 
 Command line arguments passed to the SAR processor may contain ``-`` characters in the value, which are mistaken for argument key identifiers.
 An example is the SNAP ``gpt_args`` parameter.
@@ -66,15 +66,15 @@ In the example below, SNAP is instructed to use a maximum of 32GB memory, 20GB c
 
 ::
 
-    asarrb init -c config.ini -- --gpt_args "-J-Xmx32G -c 20G -x -q 16"
+    asard rb init -c config.ini -- --gpt_args "-J-Xmx32G -c 20G -x -q 16"
 
 Once a configuration file has been created and all of its parameters have been properly defined,
-it can be used to start the processor using the ``asarrb process`` CLI tool.
-Just like with ``asarrb init``, all configuration in the `config.ini` file can be overridden via the CLI.
+it can be used to start the processor using the ``asard rb process`` CLI tool.
+Just like with ``asard rb init``, all configuration in the `config.ini` file can be overridden via the CLI.
 
 ::
 
-    asarrb process -c /path/to/config.ini --acq_mode IW --annotation dm,id
+    asard rb process -c /path/to/config.ini --acq_mode IW --annotation dm,id
 
 Configuration
 -------------
@@ -238,11 +238,6 @@ SNAP Section
 ^^^^^^^^^^^^
 
 Depending on the configuration of the `processor` parameter in the `PROCESSING` section, this section may be used or not.
-
-allow_res_osv
-+++++++++++++
-
-Allow usage of RES orbit files (or only POE)?
 
 clean_edges
 +++++++++++
