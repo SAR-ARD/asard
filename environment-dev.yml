@@ -9,7 +9,7 @@ dependencies:
   - pyrosar>=0.32.0
   - python-dateutil
   - spatialist>=0.15.2
-  - sphinx<=6.2.1
+  - sphinx
   - sphinxcontrib-bibtex>=2.2
   - nbsphinx
   - sphinx_rtd_theme
