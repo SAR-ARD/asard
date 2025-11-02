@@ -28,15 +28,17 @@ ORB_MAP = {'PD': 'predicted',
            'DI': 'preliminary',
            'DP': 'precise'}
 
-# ERS-1 IM, ERS-2 IM and ENVISAT IM - Not Applicable
-# ENVISAT AP and WS - Not Applied
-NOISE_MAP = {'IMS': 'Not Applicable',
-             'IMP': 'Not Applicable',
-             'IMM': 'Not Applicable',
-             'APP': 'Not Applied',
-             'APS': 'Not Applied',
-             'WSM': 'Not Applied',
-             }
+# IM* - Not Applicable
+# AP*, WS* - Not Applied
+NOISE_MAP = {
+    'IMS': False,
+    'IMP': False,
+    'IMM': False,
+    'APP': False,
+    'APS': False,
+    'WSM': False,
+    'WSS': False
+}
 
 SAMPLE_MAP = {
     '-dm.tif': {'type': 'mask',
@@ -67,40 +69,22 @@ SAMPLE_MAP = {
     '-id.tif': {'type': 'mask',
                 'unit': None,
                 'role': 'acquisition-id',
-                'title': 'Acquisition ID Image'},
-    '-np-vv.tif': {'type': 'noise power VV',
-                   'unit': None,
-                   'role': 'noise-power',
-                   'title': 'Noise Power VV'},
-    '-np-vh.tif': {'type': 'noise power VH',
-                   'unit': None,
-                   'role': 'noise-power',
-                   'title': 'Noise Power VH'},
-    '-np-hh.tif': {'type': 'noise power HH',
-                   'unit': None,
-                   'role': 'noise-power',
-                   'title': 'Noise Power HH'},
-    '-np-hv.tif': {'type': 'noise power HV',
-                   'unit': None,
-                   'role': 'noise-power',
-                   'title': 'Noise Power HV'}}
+                'title': 'Acquisition ID Image'}
+}
 
 URL = {
     'ancillaryData_KML': 'https://sentiwiki.copernicus.eu/__attachments/1692737/'
                          'S2A_OPER_GIP_TILPAR_MPC__20151209T095117_V20150622T000000_21000101T000000_B00.zip',
     'card4l_nrb': 'https://ceos.org/ard/files/PFS/NRB/v5.5/CARD4L-PFS_NRB_v5.5.pdf',
-    'card4l_orb': 'https://ceos.org/ard/files/PFS/ORB/v1.0/'
-                  'CARD4L_Product_Family_Specification_Ocean_Radar_Backscatter-v1.0.pdf',
     'faradayRotationReference': None,
     'geoCorrAccuracyReference': None,
-    'geoCorrAlgorithm': None,
+    'geoCorrAlgorithm': 'TBD',
     'griddingConventionURL': 'https://www.mgrs-data.org/data/documents/nga_mgrs_doc.pdf',
-    'noiseRemovalAlgorithm': None,
-    'orbitDataAccess': None,
+    'noiseRemovalAlgorithm': 'TBD',
+    'orbitDataAccess': 'TBD',
     'radiometricAccuracyReference': None,
     'RTCAlgorithm': 'https://doi.org/10.1109/Tgrs.2011.2120616',
     'sensorCalibration': None,
-    'source_access': 'https://dataspace.copernicus.eu',
-    'source_doi': None,
-    'windNormReferenceModel': None
+    'source_access': 'https://esar-ds.eo.esa.int',
+    'source_doi': None
 }

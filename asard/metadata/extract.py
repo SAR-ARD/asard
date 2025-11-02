@@ -72,17 +72,11 @@ def meta_dict(config, prod_meta, src_ids, compression):
     ----------
     config: dict
         Dictionary of the parsed config parameters for the current process.
-    target: str
-        A path pointing to the root directory of an ARD product.
+    prod_meta: dict
+        general product metadata as extracted by :func:`asard.ard.product_info`
     src_ids: list[pyroSAR.drivers.ID]
         List of :class:`~pyroSAR.drivers.ID` objects of all source products
         that overlap with the current MGRS tile.
-    proc_time: datetime.datetime
-        The datetime object used to generate the unique product identifier.
-    start: datetime.datetime
-        The product acquisition start time.
-    stop: datetime.datetime
-        The product acquisition stop time.
     compression: str
         The compression type applied to raster files of the product.
     
@@ -92,6 +86,9 @@ def meta_dict(config, prod_meta, src_ids, compression):
         A dictionary containing an extensive collection of metadata for the
         ARD product as well as source products.
     """
+    
+    dummy_num = -99999
+    dummy_str = 'TBD'
     
     URL = URL_BASE
     URL.update(URL_PACKAGE)
@@ -107,13 +104,11 @@ def meta_dict(config, prod_meta, src_ids, compression):
     
     src_sid = {}
     for sid in src_ids:
-        uid = os.path.basename(sid.scene).split('.')[0][-4:]
+        uid = sid.outname_base()
         src_sid[uid] = sid
     
     src0 = list(src_sid.keys())[0]  # first key/first file
     sid0 = src_sid[src0]
-    # manifest0 = src_xml[src0]['manifest']
-    # nsmap0 = src_xml[src0]['manifest'].nsmap
     
     dem_name = config['processing']['dem_type']
     dem_ref = DEM_MAP[dem_name]['ref']
@@ -178,7 +173,7 @@ def meta_dict(config, prod_meta, src_ids, compression):
     
     meta['prod']['doi'] = None
     meta['prod']['ellipsoidalHeight'] = None
-    meta['prod']['equivalentNumberLooks'] = calc_enl(tif=ref_tif)
+    meta['prod']['equivalentNumberOfLooks'] = calc_enl(tif=ref_tif)
     # meta['prod']['fileBitsPerSample'] = '32'
     # meta['prod']['fileByteOrder'] = 'little-endian'
     # meta['prod']['fileDataType'] = 'float'
@@ -188,11 +183,11 @@ def meta_dict(config, prod_meta, src_ids, compression):
     # meta['prod']['filterWindowSizeCol'] = None
     # meta['prod']['filterWindowSizeLine'] = None
     
-    meta['prod']['geoCorrAccuracyEasternBias'] = None
-    meta['prod']['geoCorrAccuracyEasternSTDev'] = None
-    meta['prod']['geoCorrAccuracyNorthernBias'] = None
-    meta['prod']['geoCorrAccuracyNorthernSTDev'] = None
-    meta['prod']['geoCorrAccuracy_rRMSE'] = None
+    meta['prod']['geoCorrAccuracyEasternBias'] = dummy_num
+    meta['prod']['geoCorrAccuracyEasternSTDev'] = dummy_num
+    meta['prod']['geoCorrAccuracyNorthernBias'] = dummy_num
+    meta['prod']['geoCorrAccuracyNorthernSTDev'] = dummy_num
+    meta['prod']['geoCorrAccuracy_rRMSE'] = dummy_num
     meta['prod']['geoCorrAccuracyReference'] = URL['geoCorrAccuracyReference']
     meta['prod']['geoCorrAccuracyType'] = 'slant-range'
     
@@ -216,8 +211,8 @@ def meta_dict(config, prod_meta, src_ids, compression):
     # meta['prod']['columnSpacing'] = prod_meta['columnSpacing']
     # meta['prod']['rowSpacing'] = prod_meta['rowSpacing']
     meta['prod']['pixelCoordinateConvention'] = 'upper-left'
-    meta['prod']['processingCenter'] = 'TBD'
-    meta['prod']['location'] = 'TBD'
+    meta['prod']['processingCenter'] = dummy_str
+    meta['prod']['location'] = dummy_str
     meta['prod']['processingLevel'] = 'Level 2'
     meta['prod']['processingMode'] = 'PROTOTYPE'
     meta['prod']['processorName'] = 'asard'
@@ -226,14 +221,14 @@ def meta_dict(config, prod_meta, src_ids, compression):
     meta['prod']['productName-short'] = 'NRB'
     meta['prod']['pxSpacingColumn'] = str(prod_meta['res'][0])
     meta['prod']['pxSpacingRow'] = str(prod_meta['res'][1])
-    meta['prod']['radiometricAccuracyAbsolute'] = None
-    meta['prod']['radiometricAccuracyRelative'] = None
+    meta['prod']['radiometricAccuracyAbsolute'] = dummy_num
+    meta['prod']['radiometricAccuracyRelative'] = dummy_num
     meta['prod']['radiometricAccuracyReference'] = URL['radiometricAccuracyReference']
     meta['prod']['rangeNumberOfLooks'] = sid0.meta['looks'][0]
     meta['prod']['RTCAlgorithm'] = URL['RTCAlgorithm']
-    meta['prod']['speckleFilterApplied'] = False
+    meta['prod']['speckleFilterApplied'] = None
     meta['prod']['status'] = 'PROTOTYPE'
-    meta['prod']['timeCreated'] = prod_meta['start']
+    meta['prod']['timeCreated'] = prod_meta['proc_time']
     meta['prod']['timeStart'] = prod_meta['start']
     meta['prod']['timeStop'] = prod_meta['stop']
     meta['prod']['transform'] = prod_meta['transform']
@@ -244,8 +239,8 @@ def meta_dict(config, prod_meta, src_ids, compression):
         meta['source'][uid] = {}
         meta['source'][uid]['access'] = URL['source_access']
         meta['source'][uid]['acquisitionType'] = 'NOMINAL'
-        meta['source'][uid]['ascendingNodeDate'] = None  # TBD
-        # meta['source'][uid]['azimuthLookBandwidth'] = None # TBD
+        meta['source'][uid]['ascendingNodeDate'] = None
+        meta['source'][uid]['azimuthLookBandwidth'] = {op_mode: dummy_num}
         meta['source'][uid]['azimuthNumberOfLooks'] = {op_mode: src_sid[uid].meta['looks'][1]}
         meta['source'][uid]['azimuthPixelSpacing'] = {op_mode: src_sid[uid].meta['spacing'][1]}
         meta['source'][uid]['azimuthResolution'] = {op_mode: src_sid[uid].meta['resolution'][1]}
@@ -262,13 +257,13 @@ def meta_dict(config, prod_meta, src_ids, compression):
         meta['source'][uid]['incidenceAngleMax'] = src_sid[uid].meta['incidence_fr']
         meta['source'][uid]['incidenceAngleMin'] = src_sid[uid].meta['incidence_nr']
         meta['source'][uid]['incidenceAngleMidSwath'] = src_sid[uid].meta['incidence']
-        meta['source'][uid]['instrumentAzimuthAngle'] = None  # TBD
+        meta['source'][uid]['instrumentAzimuthAngle'] = None
         meta['source'][uid]['ionosphereIndicator'] = None
-        meta['source'][uid]['lutApplied'] = None  # needed?
+        meta['source'][uid]['lutApplied'] = None
         meta['source'][uid]['majorCycleID'] = str(sid0.meta['cycleNumber'])
-        meta['source'][uid]['orbitDataAccess'] = 'https://scihub.copernicus.eu/gnss'
-        meta['source'][uid]['orbitStateVector'] = src_sid[uid].meta['origin']['DSD']['ORBIT STATE VECTOR 1'][
-            'FILENAME']  # Can it be more than one vector? check
+        meta['source'][uid]['orbitDataAccess'] = URL['orbitDataAccess']
+        osv = src_sid[uid].meta['origin']['DSD']['ORBIT STATE VECTOR 1']['FILENAME'] # use the one from processing!
+        meta['source'][uid]['orbitStateVector'] =   osv
         meta['source'][uid]['orbitDataSource'] = ORB_MAP[src_sid[uid].meta['origin']['MPH']['VECTOR_SOURCE']]
         if len(np_tifs) > 0:
             meta['source'][uid]['perfEstimates'] = calc_performance_estimates(files=np_tifs)
@@ -295,7 +290,7 @@ def meta_dict(config, prod_meta, src_ids, compression):
             meta['source'][uid]['processorName'] = None
             meta['source'][uid]['processorVersion'] = None
         meta['source'][uid]['productType'] = src_sid[uid].meta['product']
-        # meta['source'][uid]['rangeLookBandwidth'] = None # TBD
+        meta['source'][uid]['rangeLookBandwidth'] = {op_mode: dummy_num}
         meta['source'][uid]['rangeNumberOfLooks'] = {op_mode: src_sid[uid].meta['looks'][0]}
         meta['source'][uid]['rangePixelSpacing'] = {op_mode: src_sid[uid].meta['spacing'][0]}
         meta['source'][uid]['rangeResolution'] = {op_mode: src_sid[uid].meta['resolution'][0]}

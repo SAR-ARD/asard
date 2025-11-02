@@ -5,8 +5,8 @@ from importlib.metadata import version as get_version
 
 project = 'asard'
 project_latex = r'asard'
-authors = 'the asard Developers'
-authors_latex = r'the ERS\_NRB Developers'
+authors = 'the asard developers'
+authors_latex = r'the asard developers'
 year = datetime.datetime.now().year
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -237,7 +237,7 @@ latex_elements = {
 latex_documents = [
     ('index',
      '{}.tex'.format(project),
-     r'{} Documentation'.format(project_latex),
+     r'{} documentation'.format(project_latex),
      authors_latex,
      'manual'),
 ]
@@ -270,7 +270,7 @@ latex_documents = [
 man_pages = [
     ('index',
      project,
-     '{} Documentation'.format(project_latex),
+     '{} documentation'.format(project_latex),
      [authors_latex],
      1)
 ]
@@ -287,7 +287,7 @@ man_pages = [
 texinfo_documents = [
     ('index',
      project,
-     '{} Documentation'.format(project_latex),
+     '{} documentation'.format(project_latex),
      authors_latex,
      project,
      'One line description of project.',
