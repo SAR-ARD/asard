@@ -15,10 +15,11 @@ import asard.processor as process
         ('ERS2', 'IMS', '2002-10-10', '47QQG')
     ]
 )
-def test_process(sensor, acquisition_mode, date, aoi_tiles,
-                 testdata_dir, tmpdir, tmp_home):
+@pytest.mark.parametrize("processor", ['snap', 'sarsenic'])
+def test_process(processor, sensor, acquisition_mode, date, aoi_tiles,
+                 testdata_dir, tmp_path, tmp_home):
     process.main(config_file=None,  # read processor default file
-                 work_dir=str(tmpdir),
+                 work_dir=str(tmp_path),
                  scene_dir=str(testdata_dir),
                  sensor=sensor,
                  mindate=date,
