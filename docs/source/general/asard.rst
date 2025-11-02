@@ -69,6 +69,12 @@ Depending on the user configuration parameters ``measurement`` and ``annotation`
 
 - :func:`cesard.snap.gsr` may be replaced by :func:`cesard.snap.sgr` to create a sigma-gamma ratio (:math:`\gamma^0_T / \sigma^0_T`)
 
+SARSEN
+======
+
+A second SAR processor using sarsen is accessible via the `sarsenic` module with function :func:`asard.sarsenic.process`.
+This module cannot be named sarsen, because it needs to import sarsen itself, which would lead to a circular import.
+
 ARD Formatting
 --------------
 
