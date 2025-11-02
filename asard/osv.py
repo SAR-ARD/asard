@@ -248,7 +248,7 @@ def get(
         if not offline:
             download_ers(username=username, password=password,
                          target=target, satellite=scene.sensor)
-        location = (Path(target) / 'Orbits' / 'PRARE' /
+        location = (Path(target) / 'Orbits' / 'REAPER' /
                     'POD_REAPER_v2_FullMission' / 'DEOS' / scene.sensor)
         prefix = 'xxo' if scene.sensor == 'ERS1' else 'adr'
         base = f'{prefix}.{scene.start[2:8]}.sp3'
