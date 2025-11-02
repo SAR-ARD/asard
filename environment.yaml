@@ -1,15 +1,11 @@
-name: nrb_env
+name: asard
 channels:
   - conda-forge
-  - defaults
 dependencies:
-  - gdal>=3.4.1
-  - click
-  - lxml
-  - pip
-  - pystac
-  - scipy
-  - pyroSAR=0.19.0
-  - rsgislib
-  - pyproj
-  - shapely
+  - cesard>=1.0.1
+  - click>=7.1.0
+  - gdal>=3.5.0
+  - numpy
+  - pyrosar>=0.32.0
+  - python-dateutil
+  - spatialist>=0.15.2

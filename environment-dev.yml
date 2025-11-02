@@ -1,20 +1,15 @@
-name: nrb_env_dev
+name: asard_dev
 channels:
   - conda-forge
-  - defaults
 dependencies:
-  - python>=3.8
+  - cesard>=1.0.1
+  - click>=7.1.0
   - gdal>=3.5.0
-  - click
-  - lxml
-  - pystac
-  - scipy
-  - sphinx<=6.2.1
+  - numpy
+  - pyrosar>=0.32.0
+  - python-dateutil
+  - spatialist>=0.15.2
+  - sphinx
   - sphinxcontrib-bibtex>=2.2
   - nbsphinx
   - sphinx_rtd_theme
-  - pyroSAR>=0.19.0
-  - rsgislib
-  - pyproj
-  - shapely
-  - spatialist>=0.12.0

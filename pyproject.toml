@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "wheel"]
+
+[project]
+name = "asard"
+description = "Prototype processor for the ERS/Envisat Normalized Radar Backscatter (NRB) product"
+requires-python = ">=3.10"
+license = { file = "LICENSE.txt" }
+maintainers = [
+    { name = "John Truckenbrodt", email = "john.truckenbrodt@dlr.de" },
+    { name = "Ricardo Noguera", email = "ricardo.noguera@telespazio.com" }
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3"
+]
+dynamic = ["version", "readme", "dependencies"]
+
+[project.urls]
+repository = "https://github.com/SAR-ARD/asard"
+documentation = "https://asard.readthedocs.io/en/latest/"
+
+[project.optional-dependencies]
+test = ["pytest", "requests"]
+docs = ["sphinx", "sphinxcontrib-bibtex", "nbsphinx", "sphinx_rtd_theme", "sphinx-toolbox", "ipython"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["asard"]
+
+[tool.setuptools.package-data]
+"asard" = ["resources/*"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+readme = { file = ["README.md"], content-type = "text/markdown" }
+
+[tool.setuptools_scm]
+
+[project.scripts]
+asard = "asard.cli:cli"

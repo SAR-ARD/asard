@@ -1,0 +1,7 @@
+cesard>=1.0.1
+click>=7.1.0
+gdal>=3.5.0
+numpy<2.0
+pyroSAR>=0.32.0
+python-dateutil
+spatialist>=0.15.2
