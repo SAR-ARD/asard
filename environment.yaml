@@ -7,5 +7,6 @@ dependencies:
   - gdal>=3.5.0
   - numpy
   - pyrosar>=0.32.0
+  - python>=3.10
   - python-dateutil
   - spatialist>=0.15.2
