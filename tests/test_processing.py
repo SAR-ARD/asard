@@ -9,6 +9,7 @@ import asard.processor as process
         ('ASAR', 'APS', '2003-07-15', '31UFT'),
         ('ASAR', 'IMP', '2011-08-20', '32UPB'),
         ('ASAR', 'IMS', '2008-09-09', '19JFN'),
+        ('ASAR', 'WSM', '2006-12-11', '32TPS'),
         ('ERS1', 'IMP', '1996-03-01', '33VWE'),
         ('ERS1', 'IMS', '1994-06-24', '43RGL'),
         ('ERS2', 'IMP', '1997-04-01', '11TME'),
