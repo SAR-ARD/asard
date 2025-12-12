@@ -370,7 +370,7 @@ def format(
 
 
 def get_datasets(
-        scenes: list[str],
+        scenes: list[str | ID],
         sar_dir: str,
         extent: dict[str, int | float],
         epsg: int,
