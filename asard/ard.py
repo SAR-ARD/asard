@@ -370,7 +370,7 @@ def format(
 
 
 def get_datasets(
-        scenes: list[str],
+        scenes: list[str | ID],
         sar_dir: str,
         extent: dict[str, int | float],
         epsg: int,
@@ -537,16 +537,13 @@ def product_info(product_type, src_ids, tile_id, extent, epsg,
         raise ValueError(f"Unknown sensor: '{sensor}'")
     
     ard_start, ard_stop = calc_product_start_stop(src_ids=src_ids, extent=extent, epsg=epsg)
-    pol_str = '_'.join(sorted(src_ids[0].polarizations))
+    pol_str = ''.join(sorted(src_ids[0].polarizations))
     meta = {'mission': sensor,
             'mode': mode,
             'phase': src_ids[0].meta['origin']['MPH']['PHASE'],
             'cycle': src_ids[0].meta['origin']['MPH']['CYCLE'],
             'product_type': product_type,
-            'polarization': {'HH': 'SH',
-                             'VV': 'SV',
-                             'HH_HV': 'DH',
-                             'VH_VV': 'DV'}[pol_str],
+            'polarization': pol_str,
             'start': ard_start,
             'stop': ard_stop,
             'duration': (ard_stop - ard_start).total_seconds(),
@@ -565,9 +562,9 @@ def product_info(product_type, src_ids, tile_id, extent, epsg,
     meta_name_lower = dict((k, v.lower() if isinstance(v, str) else v)
                            for k, v in meta_name.items())
     skeleton_dir = ('{mission}{sensor}{mode}{product_type}_{start}_{duration:04}__'
-                    '{orbitnumber_rel:03X}_S{id}_{phase}{cycle:03}_{polarization}')
+                    '{orbitnumber_rel:03X}_S{id}_{phase}{cycle:03}_{polarization:_>4}_{tile}')
     skeleton_files = ('{mission}{sensor}{mode}{product_type}-{start}-{duration:04}--'
-                      '{orbitnumber_rel:03x}-s{id}-{phase}{cycle:03}-{polarization}')
+                      '{orbitnumber_rel:03x}-s{id}-{phase}{cycle:03}-{polarization:_>4}-{tile}')
     
     meta['product_base'] = skeleton_dir.format(**meta_name)
     meta['dir_ard'] = os.path.join(dir_out, meta['product_base'])
