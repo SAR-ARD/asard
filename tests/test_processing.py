@@ -19,14 +19,16 @@ import asard.processor as process
 @pytest.mark.parametrize("processor", ['snap', 'sarsenic'])
 def test_process(processor, sensor, acquisition_mode, date, aoi_tiles,
                  testdata_dir, tmp_path, tmp_home):
-    process.main(config_file=None,  # read processor default file
-                 work_dir=str(tmp_path),
-                 scene_dir=str(testdata_dir),
-                 sensor=sensor,
-                 mindate=date,
-                 maxdate=date,
-                 acq_mode=acquisition_mode,
-                 mode='sar, nrb',
-                 aoi_tiles=aoi_tiles,
-                 gpt_args="-J-Xmx32G -c 22G -q 16"
-                 )
+    process.main(
+        config_file=None,  # read processor default file
+        processor=processor,
+        work_dir=str(tmp_path),
+        scene_dir=str(testdata_dir),
+        sensor=sensor,
+        mindate=date,
+        maxdate=date,
+        acq_mode=acquisition_mode,
+        mode='sar, nrb',
+        aoi_tiles=aoi_tiles,
+        gpt_args="-J-Xmx32G -c 22G -q 16"
+    )
