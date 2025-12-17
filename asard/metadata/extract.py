@@ -4,12 +4,14 @@ from spatialist import Raster
 from spatialist.ancillary import finder
 from spatialist.raster import rasterize
 
-import asard
 from asard import snap
+from asard.config import version_dict
 from asard.metadata.mapping import ORB_MAP, NOISE_MAP, URL
 
 from cesard.metadata.mapping import DEM_MAP, LERC_ERR_THRES
-from cesard.metadata.extract import calc_enl, geometry_from_vec, calc_performance_estimates, vec_from_srccoords
+from cesard.metadata.extract import (calc_enl, geometry_from_vec,
+                                     calc_performance_estimates,
+                                     vec_from_srccoords)
 
 
 def get_prod_meta(tif, src_ids, sar_dir):
@@ -212,7 +214,8 @@ def meta_dict(config, prod_meta, src_ids, compression):
     meta['prod']['processingLevel'] = 'Level 2'
     meta['prod']['processingMode'] = 'PROTOTYPE'
     meta['prod']['processorName'] = 'asard'
-    meta['prod']['processorVersion'] = asard.__version__
+    sw_versions = version_dict(processor_name=config['processing']['processor'])
+    meta['prod']['processorVersion'] = sw_versions
     meta['prod']['productName'] = 'Normalised Radar Backscatter'
     meta['prod']['productName-short'] = 'NRB'
     meta['prod']['pxSpacingColumn'] = str(prod_meta['res'][0])
@@ -281,7 +284,7 @@ def meta_dict(config, prod_meta, src_ids, compression):
         try:
             proc_name, proc_version = src_sid[uid].meta['origin']['MPH']['SOFTWARE_VER'].split('/')
             meta['source'][uid]['processorName'] = proc_name
-            meta['source'][uid]['processorVersion'] = proc_version
+            meta['source'][uid]['processorVersion'] = {proc_name: proc_version}
         except:
             meta['source'][uid]['processorName'] = None
             meta['source'][uid]['processorVersion'] = None

@@ -17,6 +17,7 @@ Configuration
         get_config
         get_keys
         read_config_file
+        version_dict
 
 Processing
 ----------

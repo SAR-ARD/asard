@@ -2,7 +2,7 @@ name: asard
 channels:
   - conda-forge
 dependencies:
-  - cesard>=1.0.1
+  - cesard>=1.1.1
   - click>=7.1.0
   - gdal>=3.5.0
   - numpy
