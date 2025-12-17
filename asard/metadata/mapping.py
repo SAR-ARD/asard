@@ -1,3 +1,5 @@
+from cesard.metadata.mapping import URL
+
 ARD_PATTERN = r'^(?P<mission>ER[12]|ENV)' \
               r'(?P<sensor>A|S)' \
               r'(?P<mode>IM|AP|WS)' \
@@ -72,14 +74,10 @@ SAMPLE_MAP = {
                 'title': 'Acquisition ID Image'}
 }
 
-URL = {
-    'ancillaryData_KML': 'https://sentiwiki.copernicus.eu/__attachments/1692737/'
-                         'S2A_OPER_GIP_TILPAR_MPC__20151209T095117_V20150622T000000_21000101T000000_B00.zip',
-    'card4l_nrb': 'https://ceos.org/ard/files/PFS/NRB/v5.5/CARD4L-PFS_NRB_v5.5.pdf',
+URL.update({
     'faradayRotationReference': None,
     'geoCorrAccuracyReference': None,
     'geoCorrAlgorithm': 'TBD',
-    'griddingConventionURL': 'https://www.mgrs-data.org/data/documents/nga_mgrs_doc.pdf',
     'noiseRemovalAlgorithm': 'TBD',
     'orbitDataAccess': 'TBD',
     'radiometricAccuracyReference': None,
@@ -87,4 +85,4 @@ URL = {
     'sensorCalibration': None,
     'source_access': 'https://esar-ds.eo.esa.int',
     'source_doi': None
-}
+})

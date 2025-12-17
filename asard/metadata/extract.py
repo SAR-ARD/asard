@@ -1,4 +1,3 @@
-import os
 import numpy as np
 from dateutil.parser import parse as dateparse
 from spatialist import Raster
@@ -7,9 +6,9 @@ from spatialist.raster import rasterize
 
 import asard
 from asard import snap
-from asard.metadata.mapping import ORB_MAP, NOISE_MAP, URL as URL_PACKAGE
+from asard.metadata.mapping import ORB_MAP, NOISE_MAP, URL
 
-from cesard.metadata.mapping import DEM_MAP, URL as URL_BASE, LERC_ERR_THRES
+from cesard.metadata.mapping import DEM_MAP, LERC_ERR_THRES
 from cesard.metadata.extract import calc_enl, geometry_from_vec, calc_performance_estimates, vec_from_srccoords
 
 
@@ -89,9 +88,6 @@ def meta_dict(config, prod_meta, src_ids, compression):
     
     dummy_num = -99999
     dummy_str = 'TBD'
-    
-    URL = URL_BASE
-    URL.update(URL_PACKAGE)
     
     meta = {'prod': {},
             'source': {},
