@@ -142,7 +142,13 @@ def process(
     os.makedirs(outdir_scene, exist_ok=True)
     
     id = identify(scene)
-    osv_file = osv.get(scene=id, offline=True)
+    if id.sensor == 'ASAR':
+        osv_type = 'DORIS'
+    elif id.sensor in ['ERS1', 'ERS2']:
+        osv_type = 'REAPER'
+    else:
+        raise RuntimeError(f"unsupported sensor: {id.sensor}")
+    osv_file = osv.get(scene=id, offline=True, type=osv_type)
     if osv_file is not None:
         log.info(f'found OSV file: {osv_file}')
         if osv_file.endswith('.zip'):
