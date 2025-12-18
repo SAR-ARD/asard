@@ -219,8 +219,7 @@ def main(config_file, **kwargs):
                                              dir_out=outdir, update=update)
                 except RuntimeError:
                     log.info('Already processed - Skip!')
-                    del tiles
-                    return
+                    continue
                 log.info(f'product name: {os.path.join(outdir, prod_meta["product_base"])}')
                 try:
                     src_ids, sar_assets = get_datasets(scenes=scenes_sub,
