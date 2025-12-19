@@ -19,7 +19,6 @@ To create an NRB product as defined by the CEOS-ARD specification, the following
 .. code-block:: ini
 
     mode = sar, nrb
-    measurement = gamma
     annotation = dm, ei, em, id, lc, li, ratio
 
 The generated backscatter is gamma nought RTC. Annotation layers are a data mask, ellipsoidal incident angle, elevation model,
@@ -58,7 +57,7 @@ Just like with ``work_dir``, all configuration parameters can be modified via th
 
 ::
 
-    asard rb init -c config.ini --work_dir /path/to/work_dir --acq_mode IW --annotation dm,id
+    asard rb init -c config.ini --work_dir /path/to/work_dir --acq_mode IM --annotation dm,id
 
 Command line arguments passed to the SAR processor may contain ``-`` characters in the value, which are mistaken for argument key identifiers.
 An example is the SNAP ``gpt_args`` parameter.
@@ -74,7 +73,7 @@ Just like with ``asard rb init``, all configuration in the `config.ini` file can
 
 ::
 
-    asard rb process -c /path/to/config.ini --acq_mode IW --annotation dm,id
+    asard rb process -c /path/to/config.ini --acq_mode IM --annotation dm,id
 
 Configuration
 -------------
