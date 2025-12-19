@@ -148,9 +148,28 @@ def pre(src, dst, workflow, allow_res_osv=True,
         read.parameters['file'] = scene.scene
         wf.insert_node(read)
         ############################################
-        osv.get(scene=scene, type='DELFT')
+        if scene.sensor == 'ASAR':
+            osv_type = 'DORIS Precise VOR (ENVISAT) (Auto Download)'
+            suffix = 'ASAR'
+        else:
+            osv_type = 'DELFT Precise (ENVISAT, ERS1&2) (Auto Download)'
+            suffix = 'ERS'
+        
+        osv_user_var = f'ASARD_OSV_USER_{suffix}'
+        osv_pass_var = osv_user_var.replace('USER', 'PASS')
+        
+        osv_user = os.environ.get(osv_user_var)
+        osv_pass = os.environ.get(osv_pass_var)
+        
+        offline = False
+        if osv_user is None or osv_pass is None:
+            offline = True
+        
+        osv.get(scene=scene, type=osv_type[:5], offline=offline,
+                username=osv_user, password=osv_pass)
+        
         orb = parse_node('Apply-Orbit-File')
-        orb.parameters['orbitType'] = 'DELFT Precise (ENVISAT, ERS1&2) (Auto Download)'
+        orb.parameters['orbitType'] = osv_type
         orb.parameters['continueOnFail'] = False
         wf.insert_node(orb, before=read.id)
         last = orb

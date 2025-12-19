@@ -335,6 +335,9 @@ def get(
     -------
         either the name of an existing file or None if no file was found
     """
+    start = scene.start_dt - relativedelta(minute=8)
+    stop = scene.stop_dt + relativedelta(minute=8)
+    
     if target is None:
         target = ExamineSnap().auxdatapath
     
@@ -343,10 +346,10 @@ def get(
             raise ValueError(f"unsupported OSV type '{type}' for sensor '{scene.sensor}'")
         if not offline:
             download_asar(username=username, password=password, target=target,
-                          start=scene.start_dt, stop=scene.stop_dt)
+                          start=start, stop=stop)
         location = Path(target) / 'Orbits' / 'Doris' / 'vor'
-        month_previous = (scene.start_dt - relativedelta(months=1)).strftime('%Y%m')
-        month_current = scene.start_dt.strftime('%Y%m')
+        month_previous = (start - relativedelta(months=1)).strftime('%Y%m')
+        month_current = start.strftime('%Y%m')
         folders = [location / month_previous, location / month_current]
         folders = [x for x in folders if x.exists()]
         candidates = []
@@ -355,15 +358,15 @@ def get(
                            recursive=False, regex=True)
             for file in files:
                 meta = _asar_osv_meta(file)
-                if meta['start'] < scene.start_dt < meta['stop']:
+                if meta['start'] < start < meta['stop']:
                     candidates.append((file, meta))
         if len(candidates) == 0:
             return None
         elif len(candidates) == 1:
             return candidates[0][0]
         else:
-            diff_start = [scene.start_dt - x[1]['start'] for x in candidates]
-            diff_stop = [x[1]['stop'] - scene.stop_dt for x in candidates]
+            diff_start = [start - x[1]['start'] for x in candidates]
+            diff_stop = [x[1]['stop'] - stop for x in candidates]
             # determine the OSV file(s), whose range best covers that of the scene
             # a balanced score is computed optimizing the time range covered by the OSV
             # file before and after the scene acquisition
@@ -393,18 +396,16 @@ def get(
             location = (Path(target) / 'Orbits' / 'Delft Precise Orbits' /
                         f'ODR.{sat}' / sub)
             arclist = _read_arclist(location / 'arclist')
-            candidates = arclist[(arclist['stop'] >= scene.start_dt) &
-                                 (arclist['start'] <= scene.stop_dt) &
-                                 (arclist['begin'] <= scene.start_dt)]
+            candidates = arclist[(arclist['stop'] >= start) &
+                                 (arclist['start'] <= stop) &
+                                 (arclist['begin'] <= start)]
             if len(candidates) == 0:
                 return None
-            elif len(candidates) == 1:
+            else:
                 osv = location / f'ODR.{candidates.iloc[0]['arc']}'
                 if not osv.exists():
                     return None
                 return str(osv)
-            else:
-                raise RuntimeError('got multiple results and cannot decide which one to use')
         elif type == 'REAPER':
             location = (Path(target) / 'Orbits' / 'REAPER' /
                         'POD_REAPER_v2_FullMission' / 'DEOS' / scene.sensor)
