@@ -1,6 +1,21 @@
 Changelog
 =========
 
+0.2.0 | 2025-12-19
+------------------
+
+* package modernization (`#5 <https://github.com/SAR-ARD/asard/pull/5>`_)
+* documentation updates (`#6 <https://github.com/SAR-ARD/asard/pull/6>`_)
+* sarsenic: new module for sarsen SAR processing (`#7 <https://github.com/SAR-ARD/asard/pull/7>`_)
+* product naming: change polarization field, add S2-MGRS ID (`#8 <https://github.com/SAR-ARD/asard/pull/8>`_)
+* fix file naming, add software versions to metadata (`#9 <https://github.com/SAR-ARD/asard/pull/9>`_)
+* [processor] continue if ARD product exists (don't return) (`#10 <https://github.com/SAR-ARD/asard/pull/10>`_)
+* extension and improvement of tests (`#11 <https://github.com/SAR-ARD/asard/pull/11>`_)
+* OSV auto-download (`#12 <https://github.com/SAR-ARD/asard/pull/12>`_)
+* OSV download bug fixes (`#13 <https://github.com/SAR-ARD/asard/pull/13>`_)
+
+`Full v0.2.0 Changelog <https://github.com/SAR-ARD/asard/compare/0.1.9...0.2.0>`_
+
 0.1.9 | 2023-07-17
 ------------------
 * Added Dockerfile to simplify installation
