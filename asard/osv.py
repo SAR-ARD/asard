@@ -401,13 +401,11 @@ def get(
                                  (arclist['begin'] <= start)]
             if len(candidates) == 0:
                 return None
-            elif len(candidates) == 1:
+            else:
                 osv = location / f'ODR.{candidates.iloc[0]['arc']}'
                 if not osv.exists():
                     return None
                 return str(osv)
-            else:
-                raise RuntimeError('got multiple results and cannot decide which one to use')
         elif type == 'REAPER':
             location = (Path(target) / 'Orbits' / 'REAPER' /
                         'POD_REAPER_v2_FullMission' / 'DEOS' / scene.sensor)
