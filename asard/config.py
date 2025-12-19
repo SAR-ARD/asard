@@ -6,7 +6,8 @@ import configparser
 from datetime import timedelta
 from dateutil.parser import parse as dateparse
 from osgeo import gdal
-from cesard.config import keyval_check, validate_options, validate_value
+from cesard.config import (keyval_check, validate_options, validate_value,
+                           version_dict as cesard_version_dict)
 
 
 def get_keys(section):
@@ -259,3 +260,25 @@ def gdal_conf(config):
     
     return {'threads': threads, 'threads_before': threads_before,
             'multithread': multithread}
+
+
+def version_dict(processor_name: str) -> dict[str, str]:
+    """
+    Get the versions of used packages
+
+    Parameters
+    ----------
+    processor_name:
+        the name of the used SAR processor (e.g. `snap`)
+    
+    Returns
+    -------
+        a dictionary containing the versions of relevant python packages and
+        the return of the `version_dict` function of the used SAR processor.
+    """
+    import asard
+    out = cesard_version_dict()
+    out['asard'] = asard.__version__
+    processor = import_module(f'asard.{processor_name}')
+    out.update(processor.version_dict())
+    return out
