@@ -10,7 +10,7 @@ import asard.processor as process
         ('ASAR', 'IMP', '2011-07-23', '32TPS'),
         ('ASAR', 'IMS', '2008-09-20', '32TPS'),
         ('ASAR', 'WSM', '2006-12-11', '32TPS'),
-        ('ERS1', 'IMP', '1996-01-10', '32TPS'),
+        ('ERS1', 'IMP', '1995-12-06', '32TPS'),
         ('ERS1', 'IMS', '1996-01-10', '32TPS'),
         ('ERS2', 'IMP', '1998-01-15', '32TPS'),
         ('ERS2', 'IMS', '1997-01-11', '32TPS')
