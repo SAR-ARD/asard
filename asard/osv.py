@@ -18,11 +18,34 @@ import logging
 
 log = logging.getLogger('asard')
 
-osv_asar = (r'DOR_VOR_AXVF-P'
-            r'(?P<publish>[0-9]{8}_[0-9]{6})_'
-            r'(?P<start>[0-9]{8}_[0-9]{6})_'
-            r'(?P<stop>[0-9]{8}_[0-9]{6})'
-            r'(?:\.zip|)')
+_osv_asar = (r'DOR_VOR_AXVF-P'
+             r'(?P<publish>[0-9]{8}_[0-9]{6})_'
+             r'(?P<start>[0-9]{8}_[0-9]{6})_'
+             r'(?P<stop>[0-9]{8}_[0-9]{6})'
+             r'(?:\.zip|)')
+
+
+def _asar_osv_meta(
+        file: str
+) -> dict[str, str | datetime]:
+    """
+    Read metadata from the ASAR OSV file name.
+    Timestamps are converted to timezone-aware datetime objects.
+
+    Parameters
+    ----------
+    file:
+        the DORIS OSV file name.
+
+    Returns
+    -------
+        the metadata dictionary
+    """
+    meta = re.match(_osv_asar, os.path.basename(file)).groupdict()
+    for date in ['publish', 'start', 'stop']:
+        dt = datetime.strptime(meta[date], '%Y%m%d_%H%M%S')
+        meta[date] = dt.replace(tzinfo=timezone.utc)
+    return meta
 
 
 def _download_ers_reaper(
@@ -84,7 +107,7 @@ def _download_ers_delft(
             log.info(f'{local} <<-- {url}/{remote}')
             with open(local, 'wb') as f:
                 ftp.retrbinary(f"RETR {remote}", f.write)
-        arclist = read_arclist(local)
+        arclist = _read_arclist(local)
         if start is not None:
             arclist = arclist[arclist['stop'] >= start]
         if stop is not None:
@@ -101,7 +124,7 @@ def _download_ers_delft(
     ftp.quit()
 
 
-def read_arclist(arclist):
+def _read_arclist(arclist: str | Path) -> pd.DataFrame:
     pattern = ('(?P<arc>[0-9]{3})  '
                '(?P<start>[0-9 :]{12}) - '
                '(?P<stop>[0-9 :]{12}) '
@@ -200,7 +223,7 @@ def download_asar(
         ftp.cwd(folder_path)
         files = ftp.nlst()
         for file in files:
-            meta = asar_osv_meta(file)
+            meta = _asar_osv_meta(file)
             if start is not None:
                 if meta['stop'] < start:
                     continue
@@ -328,10 +351,10 @@ def get(
         folders = [x for x in folders if x.exists()]
         candidates = []
         for folder in folders:
-            files = finder(target=str(folder), matchlist=[osv_asar],
+            files = finder(target=str(folder), matchlist=[_osv_asar],
                            recursive=False, regex=True)
             for file in files:
-                meta = asar_osv_meta(file)
+                meta = _asar_osv_meta(file)
                 if meta['start'] < scene.start_dt < meta['stop']:
                     candidates.append((file, meta))
         if len(candidates) == 0:
@@ -369,7 +392,7 @@ def get(
             sub = 'dgm-e04'
             location = (Path(target) / 'Orbits' / 'Delft Precise Orbits' /
                         f'ODR.{sat}' / sub)
-            arclist = read_arclist(location / 'arclist')
+            arclist = _read_arclist(location / 'arclist')
             candidates = arclist[(arclist['stop'] >= scene.start_dt) &
                                  (arclist['start'] <= scene.stop_dt) &
                                  (arclist['begin'] <= scene.start_dt)]
@@ -393,26 +416,3 @@ def get(
             return str(osv)
     else:
         raise ValueError(f'unknown sensor: {scene.sensor}')
-
-
-def asar_osv_meta(
-        file: str
-) -> dict[str, str | datetime]:
-    """
-    Read metadata from the ASAR OSV file name.
-    Timestamps are converted to timezone-aware datetime objects.
-    
-    Parameters
-    ----------
-    file:
-        the DORIS OSV file name.
-
-    Returns
-    -------
-        the metadata dictionary
-    """
-    meta = re.match(osv_asar, os.path.basename(file)).groupdict()
-    for date in ['publish', 'start', 'stop']:
-        dt = datetime.strptime(meta[date], '%Y%m%d_%H%M%S')
-        meta[date] = dt.replace(tzinfo=timezone.utc)
-    return meta

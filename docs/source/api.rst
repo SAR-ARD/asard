@@ -87,7 +87,6 @@ OSV file handling
     .. autosummary::
         :nosignatures:
 
-        asar_osv_meta
         download_asar
         download_ers
         get
