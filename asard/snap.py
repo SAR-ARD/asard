@@ -6,6 +6,8 @@ from pyroSAR.snap.auxil import gpt, parse_recipe, parse_node, \
     orb_parametrize
 from pyroSAR.ancillary import Lock, LockCollection
 
+from asard import osv
+
 from cesard.tile_extraction import aoi_from_scene
 from cesard.ancillary import datamask
 from cesard.config import keyval_check
@@ -126,9 +128,7 @@ def pre(src, dst, workflow, allow_res_osv=True,
         the file name of the target scene. Format is BEAM-DIMAP.
     workflow: str
         the output SNAP XML workflow filename.
-    allow_res_osv: bool
-        Also allow the less accurate RES orbit files to be used?
-    output_beta0: bool
+    output_beta0:
         output beta nought backscatter needed for RTC?
     output_sigma0: bool
         output sigma nought backscatter needed for NESZ?
@@ -138,13 +138,6 @@ def pre(src, dst, workflow, allow_res_osv=True,
         a list of additional arguments to be passed to the gpt call
 
         - e.g. ``['-x', '-c', '2048M']`` for increased tile cache size and intermediate clearing
-
-    Returns
-    -------
-
-    See Also
-    --------
-    pyroSAR.snap.auxil.orb_parametrize
     """
     scene = identify(src)
     if not os.path.isfile(workflow):
@@ -155,9 +148,10 @@ def pre(src, dst, workflow, allow_res_osv=True,
         read.parameters['file'] = scene.scene
         wf.insert_node(read)
         ############################################
-        orb = orb_parametrize(scene=scene, formatName='ENVISAT',
-                              allow_RES_OSV=allow_res_osv,
-                              continueOnFail=True)
+        osv.get(scene=scene, type='DELFT')
+        orb = parse_node('Apply-Orbit-File')
+        orb.parameters['orbitType'] = 'DELFT Precise (ENVISAT, ERS1&2) (Auto Download)'
+        orb.parameters['continueOnFail'] = False
         wf.insert_node(orb, before=read.id)
         last = orb
         ############################################
@@ -244,9 +238,7 @@ def process(scene, outdir, measurement, spacing, dem,
          - projectedLocalIncidenceAngle
          - scatteringArea
          - lookDirection: range look direction angle
-    allow_res_osv: bool
-        Also allow the less accurate RES orbit files to be used?
-    clean_edges: bool
+    clean_edges:
         Erode noisy image edges? See :func:`pyroSAR.snap.auxil.erode_edges`.
         Does not apply to layover-shadow mask.
     clean_edges_pixels: int
@@ -303,7 +295,6 @@ def process(scene, outdir, measurement, spacing, dem,
         if not os.path.isfile(out_pre):
             log.info('preprocessing main scene')
             pre(src=scene, dst=out_pre, workflow=out_pre_wf,
-                allow_res_osv=allow_res_osv,
                 output_beta0=apply_rtc, gpt_args=gpt_args)
         else:
             log.info('main scene has already been preprocessed')
