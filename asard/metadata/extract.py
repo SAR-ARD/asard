@@ -225,7 +225,7 @@ def meta_dict(config, prod_meta, src_ids, compression):
     meta['prod']['radiometricAccuracyReference'] = URL['radiometricAccuracyReference']
     meta['prod']['rangeNumberOfLooks'] = sid0.meta['looks'][0]
     meta['prod']['RTCAlgorithm'] = URL['RTCAlgorithm']
-    meta['prod']['speckleFilterApplied'] = None
+    meta['prod']['speckleFilterApplied'] = False
     meta['prod']['status'] = 'PROTOTYPE'
     meta['prod']['timeCreated'] = prod_meta['proc_time']
     meta['prod']['timeStart'] = prod_meta['start']
