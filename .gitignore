@@ -130,6 +130,7 @@ dmypy.json
 
 .idea/
 out/
+dev/
 dev_*
 
 # OSX tempfiles

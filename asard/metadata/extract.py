@@ -1,17 +1,29 @@
 import numpy as np
 from dateutil.parser import parse as dateparse
+from datetime import timezone
+from typing import Any
 from spatialist import Raster
 from spatialist.ancillary import finder
 from spatialist.raster import rasterize
+from pyroSAR.ancillary import get_geometry
 
 from asard import snap
 from asard.config import version_dict
 from asard.metadata.mapping import ORB_MAP, NOISE_MAP, URL
 
 from cesard.metadata.mapping import DEM_MAP, LERC_ERR_THRES
+from cesard.metadata.model import (
+    ARDMetadata, AxisAccuracy, BackscatterMetadata, Card4lMetadata,
+    CommonMetadata, CompressionMetadata, DEMMetadata, GeometricAccuracyMetadata,
+    GeometricCorrectionMetadata, GeometryMetadata, GridMetadata,
+    GroundSamplingDistance, IncidenceAngleMetadata, NoiseRemovalMetadata,
+    NOT_IMPLEMENTED_NUMBER, NOT_IMPLEMENTED_TEXT, PerformanceEstimate,
+    ProcessingMetadata, ProductMetadata, RadiometricAccuracyMetadata,
+    SourceMetadata, SourceOrbitMetadata, SourcePerformanceMetadata,
+    SwathAxisMetadata,
+)
 from cesard.metadata.extract import (calc_enl, geometry_from_vec,
-                                     calc_performance_estimates,
-                                     vec_from_srccoords)
+                                     calc_performance_estimates)
 
 
 def get_prod_meta(tif, src_ids, sar_dir):
@@ -35,7 +47,11 @@ def get_prod_meta(tif, src_ids, sar_dir):
         A dictionary containing metadata for the product scene.
     """
     out = dict()
-    coord_list = [src.meta['coordinates'] for src in src_ids]
+    coord_list = [
+        coordinate
+        for sid in src_ids
+        for coordinate in sid.meta["coordinates"]
+    ]
     
     with Raster(tif) as ras:
         vec = ras.bbox()
@@ -51,10 +67,10 @@ def get_prod_meta(tif, src_ids, sar_dir):
         out['geom'] = geometry_from_vec(vectorobject=vec)
         
         # Calculate number of nodata border pixels based on source scene(s) footprint
-        with vec_from_srccoords(coord_list=coord_list, crs=4326) as srcvec:
+        with get_geometry(coordinates=coord_list, crs=4326) as srcvec:
             ras_srcvec = rasterize(vectorobject=srcvec, reference=ras, burn_values=[1])
             arr_srcvec = ras_srcvec.array()
-            out['nodata_borderpx'] = np.count_nonzero(np.isnan(arr_srcvec))
+            out['nodata_borderpx'] = int(np.count_nonzero(np.isnan(arr_srcvec)))
     
     proc_meta = snap.get_metadata(scene=src_ids[0], outdir=sar_dir)
     out['ML_nRgLooks'] = proc_meta['rlks'] * src_ids[0].meta['looks'][0]
@@ -63,241 +79,298 @@ def get_prod_meta(tif, src_ids, sar_dir):
     return out
 
 
-def meta_dict(config, prod_meta, src_ids, compression):
+def meta_dict(
+        config: dict[str, Any],
+        prod_meta: dict[str, Any],
+        src_ids: list[Any],
+        compression: str
+) -> ARDMetadata:
     """
-    Creates a dictionary containing metadata for an ARD product as well as
-    its source products. The dictionary can then be used to parse XML and
-    STAC JSON metadata files, respectively.
-    
+    Create an :class:`~cesard.metadata.model.ARDMetadata` object containing
+    metadata for an ARD product and its source products.
+
     Parameters
     ----------
-    config: dict
+    config
         Dictionary of the parsed config parameters for the current process.
-    prod_meta: dict
-        general product metadata as extracted by :func:`asard.ard.product_info`
-    src_ids: list[pyroSAR.drivers.ID]
+    prod_meta
+        General product metadata as extracted by :func:`asard.ard.product_info`.
+    src_ids
         List of :class:`~pyroSAR.drivers.ID` objects of all source products
         that overlap with the current MGRS tile.
-    compression: str
+    compression
         The compression type applied to raster files of the product.
-    
+
     Returns
     -------
-    meta: dict
-        A dictionary containing an extensive collection of metadata for the
-        ARD product as well as source products.
+        The product and source metadata as an
+        :class:`~cesard.metadata.model.ARDMetadata` object.
     """
-    
-    dummy_num = -99999
-    dummy_str = 'TBD'
-    
-    meta = {'prod': {},
-            'source': {},
-            'common': {}}
-    
     ref_tif = finder(prod_meta['dir_ard'], ['[hv]{2}-g-lin.tif$'], regex=True)[0]
     np_tifs = finder(prod_meta['dir_ard'], ['-np-[hv]{2}.tif$'], regex=True)
-    prod_meta.update(get_prod_meta(tif=ref_tif, src_ids=src_ids, sar_dir=config['processing']['sar_dir']))
+    prod_meta.update(get_prod_meta(
+        tif=ref_tif,
+        src_ids=src_ids,
+        sar_dir=config['processing']['sar_dir'],
+    ))
     op_mode = prod_meta['mode']
     
-    src_sid = {}
-    for sid in src_ids:
-        uid = sid.outname_base()
-        src_sid[uid] = sid
-    
-    src0 = list(src_sid.keys())[0]  # first key/first file
-    sid0 = src_sid[src0]
+    src_sid = {sid.outname_base(): sid for sid in src_ids}
+    sid0 = next(iter(src_sid.values()))
     
     dem_name = config['processing']['dem_type']
-    dem_ref = DEM_MAP[dem_name]['ref']
-    dem_type = DEM_MAP[dem_name]['type']
-    dem_egm = DEM_MAP[dem_name]['egm']
+    dem = DEM_MAP[dem_name]
+    dem_gsd = dem['gsd']
+    if isinstance(dem_gsd, str):
+        parts = dem_gsd.split()
+        dem_gsd = GroundSamplingDistance(
+            value=float(parts[0]),
+            unit=parts[1] if len(parts) == 2 else 'm',
+        )
+    else:
+        dem_gsd = GroundSamplingDistance(value=float(dem_gsd), unit='m')
     
-    # Common metadata (sorted alphabetically)
-    meta['common']['antennaLookDirection'] = 'RIGHT'
+    # COMMON metadata
     if sid0.sensor == 'ASAR':
         constellation = 'envisat'
     elif sid0.sensor.startswith('ERS'):
         constellation = 'ers'
     else:
         raise ValueError('Unknown sensor type')
-    meta['common']['antennaLookDirection'] = 'RIGHT'
-    meta['common']['constellation'] = constellation
-    meta['common']['instrumentShortName'] = {'ERS1': 'SAR', 'ERS2': 'SAR', 'ASAR': 'ASAR'}[sid0.sensor]
-    meta['common']['operationalMode'] = op_mode
-    meta['common']['orbitDirection'] = {'A': 'ascending', 'D': 'descending'}[sid0.orbit]
-    meta['common']['orbitMeanAltitude'] = '{:.2e}'.format(693000)
-    meta['common']['orbitNumber_abs'] = sid0.orbitNumber_abs
-    meta['common']['orbitNumber_rel'] = sid0.orbitNumber_rel
+    
     pid_lookup = {'ERS1': '1', 'ERS2': '2', 'ASAR': '1'}
-    meta['common']['platformIdentifier'] = pid_lookup[sid0.sensor]
     psn_lookup = {'ERS1': 'ERS', 'ERS2': 'ERS', 'ASAR': 'ENVISAT'}
-    meta['common']['platformShortName'] = psn_lookup[sid0.sensor]
-    meta['common']['platformFullname'] = '{}-{}'.format(meta['common']['platformShortName'].lower(),
-                                                        meta['common']['platformIdentifier'].lower())
-    meta['common']['platformReference'] = URL['platformReference'][meta['common']['platformFullname']]
-    meta['common']['polarisationChannels'] = sid0.polarizations
-    meta['common']['polarisationMode'] = prod_meta['polarization']
-    meta['common']['processingLevel'] = 'L1C'
-    meta['common']['radarBand'] = 'C'
-    meta['common']['radarCenterFreq'] = 5300000000
-    meta['common']['sensorType'] = 'RADAR'
-    meta['common']['swathIdentifier'] = op_mode
-    meta['common']['wrsLongitudeGrid'] = str(sid0.meta['orbitNumber_rel'])
+    platform_identifier = pid_lookup[sid0.sensor]
+    platform_short_name = psn_lookup[sid0.sensor]
+    platform_full_name = f'{platform_short_name.lower()}-{platform_identifier.lower()}'
     
-    # Product metadata (sorted alphabetically)
-    meta['prod']['access'] = None
-    meta['prod']['acquisitionType'] = 'NOMINAL'
-    meta['prod']['ancillaryData_KML'] = URL['ancillaryData_KML']
-    meta['prod']['azimuthNumberOfLooks'] = sid0.meta['looks'][1]
-    meta['prod']['backscatterConvention'] = 'linear power'
-    meta['prod']['backscatterConversionEq'] = '10*log10(DN)'
-    meta['prod']['backscatterMeasurement'] = 'gamma0'
-    meta['prod']['card4l-link'] = URL['card4l_nrb']
-    meta['prod']['card4l-name'] = 'NRB'
-    meta['prod']['card4l-version'] = '5.5'
-    meta['prod']['compression_type'] = compression
-    meta['prod']['compression_zerrors'] = LERC_ERR_THRES
-    meta['prod']['crsEPSG'] = str(prod_meta['epsg'])
-    meta['prod']['crsWKT'] = prod_meta['wkt']
-    meta['prod']['demAccess'] = DEM_MAP[config['processing']['dem_type']]['access']
-    meta['prod']['demEGMReference'] = DEM_MAP[config['processing']['dem_type']]['egm']
-    meta['prod']['demEGMResamplingMethod'] = 'bilinear'
-    meta['prod']['demGSD'] = DEM_MAP[config['processing']['dem_type']]['gsd']
-    meta['prod']['demName'] = dem_name
-    meta['prod']['demReference'] = dem_ref
-    meta['prod']['demResamplingMethod'] = 'bilinear'
-    meta['prod']['demType'] = dem_type
+    common = CommonMetadata(
+        antenna_look_direction='RIGHT',
+        constellation=constellation,
+        instrument_short_name={'ERS1': 'SAR', 'ERS2': 'SAR', 'ASAR': 'ASAR'}[sid0.sensor],
+        operational_mode=op_mode,
+        orbit_direction={'A': 'ascending', 'D': 'descending'}[sid0.orbit],
+        orbit_mean_altitude=693000.0,
+        orbit_number_absolute=sid0.orbitNumber_abs,
+        orbit_number_relative=sid0.orbitNumber_rel,
+        platform_full_name=platform_full_name,
+        platform_identifier=platform_identifier,
+        platform_reference=URL['platformReference'][platform_full_name],
+        platform_short_name=platform_short_name,
+        polarizations=tuple(sid0.polarizations),
+        polarization_mode=prod_meta['polarization'],
+        processing_level='L1C',
+        radar_band='C',
+        radar_center_frequency=5300000000.0,
+        sensor_type='RADAR',
+        swath_identifier=op_mode,
+        wrs_longitude_grid=sid0.meta['orbitNumber_rel'],
+    )
     
-    meta['prod']['doi'] = None
-    meta['prod']['ellipsoidalHeight'] = None
-    meta['prod']['equivalentNumberOfLooks'] = calc_enl(tif=ref_tif)
-    # meta['prod']['fileBitsPerSample'] = '32'
-    # meta['prod']['fileByteOrder'] = 'little-endian'
-    # meta['prod']['fileDataType'] = 'float'
-    # meta['prod']['fileFormat'] = 'COG'
-    # meta['prod']['filterApplied'] = False
-    # meta['prod']['filterType'] = None
-    # meta['prod']['filterWindowSizeCol'] = None
-    # meta['prod']['filterWindowSizeLine'] = None
+    # PRODUCT metadata
+    processing_center = NOT_IMPLEMENTED_TEXT
+    software_versions = {
+        str(key): str(value)
+        for key, value in version_dict(
+            processor_name=config['processing']['processor']
+        ).items()
+    }
     
-    meta['prod']['geoCorrAccuracyEasternBias'] = dummy_num
-    meta['prod']['geoCorrAccuracyEasternSTDev'] = dummy_num
-    meta['prod']['geoCorrAccuracyNorthernBias'] = dummy_num
-    meta['prod']['geoCorrAccuracyNorthernSTDev'] = dummy_num
-    meta['prod']['geoCorrAccuracy_rRMSE'] = dummy_num
-    meta['prod']['geoCorrAccuracyReference'] = URL['geoCorrAccuracyReference']
-    meta['prod']['geoCorrAccuracyType'] = 'slant-range'
+    def _aware(value):
+        if value.tzinfo is None or value.utcoffset() is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
     
-    meta['prod']['geoCorrAlgorithm'] = URL['geoCorrAlgorithm']
-    meta['prod']['geoCorrResamplingMethod'] = 'bilinear'
-    meta['prod']['geom_stac_bbox_native'] = prod_meta['geom']['bbox_native']
-    meta['prod']['geom_stac_bbox_4326'] = prod_meta['geom']['bbox']
-    meta['prod']['geom_stac_geometry_4326'] = prod_meta['geom']['geometry']
-    meta['prod']['geom_xml_center'] = prod_meta['geom']['center']
-    meta['prod']['geom_xml_envelope'] = prod_meta['geom']['envelope']
-    meta['prod']['griddingConvention'] = 'Military Grid Reference System (MGRS)'
-    meta['prod']['griddingConventionURL'] = URL['griddingConventionURL']
-    meta['prod']['licence'] = None
-    meta['prod']['mgrsID'] = prod_meta['tile']
-    meta['prod']['noiseRemovalApplied'] = NOISE_MAP[sid0.acquisition_mode]
-    meta['prod']['noiseRemovalAlgorithm'] = URL['noiseRemovalAlgorithm']
-    meta['prod']['numberOfAcquisitions'] = str(len(src_ids))
-    meta['prod']['numBorderPixels'] = prod_meta['nodata_borderpx']
-    meta['prod']['numLines'] = str(prod_meta['rows'])
-    meta['prod']['numPixelsPerLine'] = str(prod_meta['cols'])
-    # meta['prod']['columnSpacing'] = prod_meta['columnSpacing']
-    # meta['prod']['rowSpacing'] = prod_meta['rowSpacing']
-    meta['prod']['pixelCoordinateConvention'] = 'upper-left'
-    meta['prod']['processingCenter'] = dummy_str
-    meta['prod']['location'] = dummy_str
-    meta['prod']['processingLevel'] = 'Level 2'
-    meta['prod']['processingMode'] = 'PROTOTYPE'
-    meta['prod']['processorName'] = 'asard'
-    sw_versions = version_dict(processor_name=config['processing']['processor'])
-    meta['prod']['processorVersion'] = sw_versions
-    meta['prod']['productName'] = 'Normalised Radar Backscatter'
-    meta['prod']['productName-short'] = 'NRB'
-    meta['prod']['pxSpacingColumn'] = str(prod_meta['res'][0])
-    meta['prod']['pxSpacingRow'] = str(prod_meta['res'][1])
-    meta['prod']['radiometricAccuracyAbsolute'] = dummy_num
-    meta['prod']['radiometricAccuracyRelative'] = dummy_num
-    meta['prod']['radiometricAccuracyReference'] = URL['radiometricAccuracyReference']
-    meta['prod']['rangeNumberOfLooks'] = sid0.meta['looks'][0]
-    meta['prod']['RTCAlgorithm'] = URL['RTCAlgorithm']
-    meta['prod']['speckleFilterApplied'] = False
-    meta['prod']['status'] = 'PROTOTYPE'
-    meta['prod']['timeCreated'] = prod_meta['proc_time']
-    meta['prod']['timeStart'] = prod_meta['start']
-    meta['prod']['timeStop'] = prod_meta['stop']
-    meta['prod']['transform'] = prod_meta['transform']
-    # meta['prod']['wrsLongitudeGrid'] = str(meta['common']['orbitNumbers_rel'])
+    product = ProductMetadata(
+        name='Normalised Radar Backscatter',
+        product_type='NRB',
+        acquisition_type='NOMINAL',
+        status='PLANNED',
+        access=None,
+        doi=None,
+        license=None,
+        time_start=_aware(prod_meta['start']),
+        time_stop=_aware(prod_meta['stop']),
+        time_created=_aware(prod_meta['proc_time']),
+        geometry=GeometryMetadata(
+            bbox=tuple(float(x) for x in prod_meta['geom']['bbox']),
+            bbox_native=tuple(float(x) for x in prod_meta['geom']['bbox_native']),
+            geometry=dict(prod_meta['geom']['geometry']),
+        ),
+        grid=GridMetadata(
+            epsg=prod_meta['epsg'],
+            wkt=prod_meta['wkt'],
+            rows=prod_meta['rows'],
+            columns=prod_meta['cols'],
+            pixel_spacing_row=float(prod_meta['res'][1]),
+            pixel_spacing_column=float(prod_meta['res'][0]),
+            transform=tuple(float(x) for x in prod_meta['transform']),
+            mgrs_id=prod_meta['tile'],
+            pixel_coordinate_convention='upper-left',
+            number_of_border_pixels=prod_meta['nodata_borderpx'],
+            definition_reference=URL['grid_definition'],
+            convention_reference=URL['grid_convention'],
+        ),
+        processing=ProcessingMetadata(
+            facility=processing_center,
+            date=_aware(prod_meta['proc_time']),
+            mode='PROTOTYPE',
+            processor='asard',
+            software=software_versions,
+        ),
+        card4l=Card4lMetadata(
+            specification='NRB',
+            version='5.5',
+            document=URL['card4l_nrb'],
+        ),
+        compression=CompressionMetadata(
+            type=compression,
+            z_errors=LERC_ERR_THRES,
+        ),
+        dem=DEMMetadata(
+            name=dem_name,
+            type=dem['type'],
+            reference=dem['ref'],
+            access=dem['access'],
+            gsd=dem_gsd,
+            resampling_method='bilinear',
+            egm_reference=dem['egm'],
+            egm_resampling_method='bilinear',
+        ),
+        backscatter=BackscatterMetadata(
+            measurement='gamma0',
+            convention='linear power',
+            conversion_equation='10*log10(DN)',
+            range_number_of_looks=float(sid0.meta['looks'][0]),
+            azimuth_number_of_looks=float(sid0.meta['looks'][1]),
+            equivalent_number_of_looks=calc_enl(tif=ref_tif),
+        ),
+        geometric_correction=GeometricCorrectionMetadata(
+            algorithm=URL['geoCorrAlgorithm'],
+            resampling_method='bilinear',
+            accuracy=GeometricAccuracyMetadata(
+                type='slant-range',
+                eastern=AxisAccuracy(
+                    bias=NOT_IMPLEMENTED_NUMBER,
+                    standard_deviation=NOT_IMPLEMENTED_NUMBER,
+                ),
+                northern=AxisAccuracy(
+                    bias=NOT_IMPLEMENTED_NUMBER,
+                    standard_deviation=NOT_IMPLEMENTED_NUMBER,
+                ),
+                radial_rmse=NOT_IMPLEMENTED_NUMBER,
+                reference=URL['geoCorrAccuracyReference'],
+            ),
+        ),
+        radiometric_accuracy=RadiometricAccuracyMetadata(
+            absolute=NOT_IMPLEMENTED_NUMBER,
+            relative=NOT_IMPLEMENTED_NUMBER,
+            reference=URL['radiometricAccuracyReference'],
+        ),
+        noise_removal=NoiseRemovalMetadata(
+            applied=NOISE_MAP[sid0.acquisition_mode],
+            algorithm=URL['noiseRemovalAlgorithm'],
+        ),
+        rtc_algorithm=URL['RTCAlgorithm'],
+        number_of_acquisitions=len(src_sid),
+        speckle_filter_applied=None,
+        ellipsoidal_height=None,
+        wind_normalization=None,
+    )
     
-    # Source product metadata (sorted alphabetically)
-    for uid in list(src_sid.keys()):
-        meta['source'][uid] = {}
-        meta['source'][uid]['access'] = URL['source_access']
-        meta['source'][uid]['acquisitionType'] = 'NOMINAL'
-        meta['source'][uid]['ascendingNodeDate'] = None
-        meta['source'][uid]['azimuthLookBandwidth'] = {op_mode: dummy_num}
-        meta['source'][uid]['azimuthNumberOfLooks'] = {op_mode: src_sid[uid].meta['looks'][1]}
-        meta['source'][uid]['azimuthPixelSpacing'] = {op_mode: src_sid[uid].meta['spacing'][1]}
-        meta['source'][uid]['azimuthResolution'] = {op_mode: src_sid[uid].meta['resolution'][1]}
-        meta['source'][uid]['dataGeometry'] = src_sid[uid].meta['image_geometry'].replace('_', '-').lower()
-        # meta['source'][uid]['datatakeID'] = None # needed?
-        meta['source'][uid]['doi'] = URL['source_doi']
-        meta['source'][uid]['faradayMeanRotationAngle'] = None
-        meta['source'][uid]['faradayRotationReference'] = URL['faradayRotationReference']
-        meta['source'][uid]['filename'] = src_sid[uid].file
-        meta['source'][uid]['geom_stac_bbox_4326'] = prod_meta['geom']['bbox']
-        meta['source'][uid]['geom_stac_geometry_4326'] = prod_meta['geom']['geometry']
-        meta['source'][uid]['geom_xml_center'] = prod_meta['geom']['center']
-        meta['source'][uid]['geom_xml_envelope'] = prod_meta['geom']['envelope']
-        meta['source'][uid]['incidenceAngleMax'] = src_sid[uid].meta['incidence_fr']
-        meta['source'][uid]['incidenceAngleMin'] = src_sid[uid].meta['incidence_nr']
-        meta['source'][uid]['incidenceAngleMidSwath'] = src_sid[uid].meta['incidence']
-        meta['source'][uid]['instrumentAzimuthAngle'] = None
-        meta['source'][uid]['ionosphereIndicator'] = None
-        meta['source'][uid]['lutApplied'] = None
-        meta['source'][uid]['majorCycleID'] = str(sid0.meta['cycleNumber'])
-        meta['source'][uid]['orbitDataAccess'] = URL['orbitDataAccess']
-        osv = src_sid[uid].meta['origin']['DSD']['ORBIT STATE VECTOR 1']['FILENAME'] # use the one from processing!
-        meta['source'][uid]['orbitStateVector'] =   osv
-        meta['source'][uid]['orbitDataSource'] = ORB_MAP[src_sid[uid].meta['origin']['MPH']['VECTOR_SOURCE']]
-        if len(np_tifs) > 0:
-            meta['source'][uid]['perfEstimates'] = calc_performance_estimates(files=np_tifs)
-            meta['source'][uid]['perfNoiseEquivalentIntensityType'] = 'sigma0'
-        else:
-            stats = {stat: None for stat in ['minimum', 'mean', 'maximum']}
-            pe = {pol: stats for pol in meta['common']['polarisationChannels']}
-            meta['source'][uid]['perfEstimates'] = pe
-            meta['source'][uid]['perfNoiseEquivalentIntensityType'] = None
-        meta['source'][uid]['perfEquivalentNumberOfLooks'] = None
-        meta['source'][uid]['perfIntegratedSideLobeRatio'] = None
-        meta['source'][uid]['perfPeakSideLobeRatio'] = None
-        meta['source'][uid]['polCalMatrices'] = None
-        meta['source'][uid]['processingCenter'] = src_sid[uid].meta['origin']['MPH']['PROC_CENTER']
-        proc_time = src_sid[uid].meta['origin']['MPH']['PROC_TIME']
-        meta['source'][uid]['processingDate'] = proc_time
-        meta['source'][uid]['processingLevel'] = 'Level 1'
-        meta['source'][uid]['processingMode'] = 'NOMINAL'
+    # SOURCE metadata
+    if len(np_tifs) > 0:
+        performance_estimates = calc_performance_estimates(files=np_tifs)
+        noise_equivalent_intensity_type = 'sigma0'
+    else:
+        performance_estimates = {
+            pol: {'minimum': None, 'mean': None, 'maximum': None}
+            for pol in common.polarizations
+        }
+        noise_equivalent_intensity_type = None
+    
+    sources: dict[str, SourceMetadata] = {}
+    for uid, sid in src_sid.items():
+        proc_time = sid.meta['origin']['MPH']['PROC_TIME']
+        proc_time = _aware(proc_time)
         try:
-            proc_name, proc_version = src_sid[uid].meta['origin']['MPH']['SOFTWARE_VER'].split('/')
-            meta['source'][uid]['processorName'] = proc_name
-            meta['source'][uid]['processorVersion'] = {proc_name: proc_version}
-        except:
-            meta['source'][uid]['processorName'] = None
-            meta['source'][uid]['processorVersion'] = None
-        meta['source'][uid]['productType'] = src_sid[uid].meta['product']
-        meta['source'][uid]['rangeLookBandwidth'] = {op_mode: dummy_num}
-        meta['source'][uid]['rangeNumberOfLooks'] = {op_mode: src_sid[uid].meta['looks'][0]}
-        meta['source'][uid]['rangePixelSpacing'] = {op_mode: src_sid[uid].meta['spacing'][0]}
-        meta['source'][uid]['rangeResolution'] = {op_mode: src_sid[uid].meta['resolution'][0]}
-        meta['source'][uid]['sensorCalibration'] = URL['sensorCalibration']
-        meta['source'][uid]['status'] = 'ARCHIVED'
-        meta['source'][uid]['swaths'] = [op_mode]
-        meta['source'][uid]['timeCompletionFromAscendingNode'] = None
-        meta['source'][uid]['timeStartFromAscendingNode'] = None
-        meta['source'][uid]['timeStart'] = dateparse(src_sid[uid].start)
-        meta['source'][uid]['timeStop'] = dateparse(src_sid[uid].stop)
-    return meta
+            proc_name, proc_version = sid.meta['origin']['MPH']['SOFTWARE_VER'].split('/')
+            source_software = {proc_name: proc_version}
+        except (AttributeError, ValueError):
+            proc_name = None
+            source_software = {}
+        
+        osv = sid.meta['origin']['DSD']['ORBIT STATE VECTOR 1']['FILENAME']
+        sources[uid] = SourceMetadata(
+            filename=sid.file,
+            product_type=sid.meta['product'],
+            data_geometry=sid.meta['image_geometry'].replace('_', '-').lower(),
+            acquisition_type='NOMINAL',
+            status='ARCHIVED',
+            access=URL['source_access'],
+            doi=URL['source_doi'],
+            time_start=_aware(dateparse(sid.start)),
+            time_stop=_aware(dateparse(sid.stop)),
+            geometry=GeometryMetadata(
+                bbox=tuple(float(x) for x in prod_meta['geom']['bbox']),
+                geometry=dict(prod_meta['geom']['geometry']),
+            ),
+            processing=ProcessingMetadata(
+                facility=sid.meta['origin']['MPH']['PROC_CENTER'],
+                date=proc_time,
+                mode='NOMINAL',
+                processor=proc_name,
+                software=source_software,
+            ),
+            orbit=SourceOrbitMetadata(
+                ascending_node_date=None,
+                start_time_from_ascending_node=None,
+                completion_time_from_ascending_node=None,
+                major_cycle_id=sid.meta['cycleNumber'],
+                datatake_id=None,
+                data_access=URL['orbitDataAccess'],
+                data_source=ORB_MAP[sid.meta['origin']['MPH']['VECTOR_SOURCE']],
+                state_vector=osv,
+            ),
+            swaths=(op_mode,),
+            azimuth=SwathAxisMetadata(
+                look_bandwidth={op_mode: NOT_IMPLEMENTED_NUMBER},
+                number_of_looks={op_mode: float(sid.meta['looks'][1])},
+                pixel_spacing={op_mode: float(sid.meta['spacing'][1])},
+                resolution={op_mode: float(sid.meta['resolution'][1])},
+            ),
+            range=SwathAxisMetadata(
+                look_bandwidth={op_mode: NOT_IMPLEMENTED_NUMBER},
+                number_of_looks={op_mode: float(sid.meta['looks'][0])},
+                pixel_spacing={op_mode: float(sid.meta['spacing'][0])},
+                resolution={op_mode: float(sid.meta['resolution'][0])},
+            ),
+            incidence_angle=IncidenceAngleMetadata(
+                minimum=float(sid.meta['incidence_nr']),
+                maximum=float(sid.meta['incidence_fr']),
+                mid_swath=float(sid.meta['incidence']),
+            ),
+            instrument_azimuth_angle=None,
+            lut_applied=None,
+            sensor_calibration=URL['sensorCalibration'],
+            polarimetric_calibration_matrices=None,
+            faraday_mean_rotation_angle=None,
+            faraday_rotation_reference=URL['faradayRotationReference'],
+            ionosphere_indicator=None,
+            performance=SourcePerformanceMetadata(
+                noise_equivalent_intensity_type=noise_equivalent_intensity_type,
+                estimates={
+                    pol: PerformanceEstimate(**values)
+                    for pol, values in performance_estimates.items()
+                },
+                equivalent_number_of_looks=None,
+                integrated_side_lobe_ratio=None,
+                peak_side_lobe_ratio=None,
+            ),
+        )
+    
+    return ARDMetadata(
+        common=common,
+        product=product,
+        sources=sources,
+    )

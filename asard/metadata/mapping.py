@@ -1,4 +1,5 @@
 from cesard.metadata.mapping import URL
+from cesard.metadata.model import NOT_IMPLEMENTED_TEXT
 
 ARD_PATTERN = r'^(?P<mission>ER[12]|ENV)' \
               r'(?P<sensor>A|S)' \
@@ -12,7 +13,8 @@ ARD_PATTERN = r'^(?P<mission>ER[12]|ENV)' \
               r'(?P<id>[0-9A-Z]{3})_' \
               r'(?P<phase>[0-9A-Z]{1})' \
               r'(?P<cycle>[0-9]{3})_' \
-              r'(?P<pols>DH|DV|SH|SV)'
+              r'(?P<pols>[HV_]{4}_)' \
+              r'(?P<tile>[0-9A-Z]{5})'
 
 # Envisat
 # FP = FOS predicted orbit state vectors (NRT processing)
@@ -76,11 +78,11 @@ SAMPLE_MAP = {
 
 URL.update({
     'faradayRotationReference': None,
-    'geoCorrAccuracyReference': None,
-    'geoCorrAlgorithm': 'TBD',
-    'noiseRemovalAlgorithm': 'TBD',
-    'orbitDataAccess': 'TBD',
-    'radiometricAccuracyReference': None,
+    'geoCorrAccuracyReference': NOT_IMPLEMENTED_TEXT,
+    'geoCorrAlgorithm': NOT_IMPLEMENTED_TEXT,
+    'noiseRemovalAlgorithm': NOT_IMPLEMENTED_TEXT,
+    'orbitDataAccess': NOT_IMPLEMENTED_TEXT,
+    'radiometricAccuracyReference': NOT_IMPLEMENTED_TEXT,
     'RTCAlgorithm': 'https://doi.org/10.1109/Tgrs.2011.2120616',
     'sensorCalibration': None,
     'source_access': 'https://esar-ds.eo.esa.int',
