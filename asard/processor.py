@@ -7,7 +7,7 @@ from spatialist.vector import bbox, intersect, combine_polygons
 from spatialist.ancillary import finder
 from pyroSAR import identify, identify_many, Archive
 
-from asard.config import get_config, gdal_conf
+from asard.config import get_config
 import asard.ancillary as ancil
 from asard.ard import product_info, append_metadata, get_datasets, format
 
@@ -16,6 +16,7 @@ gdal.UseExceptions()
 from cesard import dem
 from cesard.search import scene_select
 from cesard.ancillary import group_by_attr
+from cesard.config import gdal_conf
 import cesard.tile_extraction as tile_ex
 
 
