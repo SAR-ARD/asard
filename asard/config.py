@@ -2,27 +2,28 @@ import os
 import re
 import importlib.resources
 from importlib import import_module
-import configparser
+from configparser import ConfigParser
 from datetime import timedelta
-from dateutil.parser import parse as dateparse
-from osgeo import gdal
 from cesard.config import (keyval_check, validate_options, validate_value,
-                           version_dict as cesard_version_dict)
+                           version_dict as cesard_version_dict, parse_datetime,
+                           parse_list)
+from typing import Any
 
 
-def get_keys(section):
+def get_keys(
+        section: str
+) -> list[str]:
     """
     get all allowed configuration keys for a section
 
     Parameters
     ----------
-    section: str
+    section
         the configuration section to get the allowed keys for.
         Either 'processing' or the name of a SAR processor plugin e.g. 'snap'.
 
     Returns
     -------
-    list[str]
         a list of keys
     """
     if section == 'processing':
@@ -43,23 +44,27 @@ def get_keys(section):
             raise RuntimeError(f"missing function asard.{section}.get_config_keys().")
 
 
-def read_config_file(config_file=None):
+def read_config_file(
+        config_file: str | None = None
+) -> ConfigParser:
     """
     Reads a configuration file and returns a ConfigParser object
 
     Parameters
     ----------
-    config_file: str or None
+    config_file
         the configuration file name. If None, the default configuration file
         within the package will be used.
 
     Returns
     -------
-    configparser.ConfigParser
+        the parsed configuration object
     """
-    parser = configparser.ConfigParser(allow_no_value=True,
-                                       converters={'_datetime': _parse_datetime,
-                                                   '_list': _parse_list})
+    parser = ConfigParser(
+        allow_no_value=True,
+        converters={'_datetime': parse_datetime,
+                    '_list': parse_list}
+    )
     
     if config_file:
         if not os.path.isfile(config_file):
@@ -73,20 +78,22 @@ def read_config_file(config_file=None):
     return parser
 
 
-def get_config(config_file=None, **kwargs):
+def get_config(
+        config_file: str | None = None,
+        **kwargs: Any
+) -> dict[str, Any]:
     """
     Returns the content of a `config.ini` file as a dictionary.
 
     Parameters
     ----------
-    config_file: str or None
+    config_file
         Full path to the config file that should be parsed to a dictionary.
-    kwargs: dict[str]
+    **kwargs
         further keyword arguments overriding configuration found in the config file.
 
     Returns
     -------
-    dict
         Dictionary of the parsed config parameters.
         The keys correspond to the config sections in lowercase letters.
     """
@@ -104,7 +111,10 @@ def get_config(config_file=None, **kwargs):
     return out
 
 
-def _get_config_processing(parser, **kwargs):
+def _get_config_processing(
+        parser: ConfigParser,
+        **kwargs: Any
+) -> dict[str, Any]:
     allowed_keys = get_keys(section='processing')
     try:
         proc_sec = parser['PROCESSING']
@@ -217,58 +227,15 @@ def _get_config_processing(parser, **kwargs):
     return out
 
 
-def _parse_datetime(s):
-    """Custom converter for configparser:
-    https://docs.python.org/3/library/configparser.html#customizing-parser-behaviour"""
-    return dateparse(s)
-
-
-def _parse_list(s):
-    """Custom converter for configparser:
-    https://docs.python.org/3/library/configparser.html#customizing-parser-behaviour"""
-    if s in ['', 'None']:
-        return None
-    else:
-        return [x.strip() for x in s.split(',')]
-
-
-def gdal_conf(config):
-    """
-    Stores GDAL configuration options for the current process.
-    
-    Parameters
-    ----------
-    config: dict
-        Dictionary of the parsed config parameters for the current process.
-    
-    Returns
-    -------
-    dict
-        Dictionary containing GDAL configuration options for the current process.
-    """
-    threads = config['processing']['gdal_threads']
-    threads_before = gdal.GetConfigOption('GDAL_NUM_THREADS')
-    if not isinstance(threads, int):
-        raise TypeError("'threads' must be of type int")
-    if threads == 1:
-        multithread = False
-    elif threads > 1:
-        multithread = True
-        gdal.SetConfigOption('GDAL_NUM_THREADS', str(threads))
-    else:
-        raise ValueError("'threads' must be >= 1")
-    
-    return {'threads': threads, 'threads_before': threads_before,
-            'multithread': multithread}
-
-
-def version_dict(processor_name: str) -> dict[str, str]:
+def version_dict(
+        processor_name: str
+) -> dict[str, str]:
     """
     Get the versions of used packages
 
     Parameters
     ----------
-    processor_name:
+    processor_name
         the name of the used SAR processor (e.g. `snap`)
     
     Returns
