@@ -1,7 +1,7 @@
 import re
 import numpy as np
 from dateutil.parser import parse as dateparse
-from datetime import timezone
+from datetime import timezone, datetime
 from typing import Any
 from spatialist import Raster
 from spatialist.ancillary import finder
@@ -180,10 +180,12 @@ def meta_dict(
         ).items()
     }
     
-    def _aware(value):
+    def _as_utc(value: datetime | str) -> datetime:
+        if isinstance(value, str):
+            value = dateparse(value)
         if value.tzinfo is None or value.utcoffset() is None:
             return value.replace(tzinfo=timezone.utc)
-        return value
+        return value.astimezone(timezone.utc)
     
     product = ProductMetadata(
         name='Normalised Radar Backscatter',
@@ -193,9 +195,9 @@ def meta_dict(
         access=None,
         doi=None,
         license=None,
-        time_start=_aware(prod_meta['start']),
-        time_stop=_aware(prod_meta['stop']),
-        time_created=_aware(prod_meta['proc_time']),
+        time_start=_as_utc(prod_meta['start']),
+        time_stop=_as_utc(prod_meta['stop']),
+        time_created=_as_utc(prod_meta['proc_time']),
         geometry=GeometryMetadata(
             bbox=tuple(float(x) for x in prod_meta['geom']['bbox']),
             bbox_native=tuple(float(x) for x in prod_meta['geom']['bbox_native']),
@@ -217,7 +219,7 @@ def meta_dict(
         ),
         processing=ProcessingMetadata(
             facility=processing_center,
-            date=_aware(prod_meta['proc_time']),
+            date=_as_utc(prod_meta['proc_time']),
             mode='PROTOTYPE',
             processor='asard',
             software=software_versions,
@@ -296,7 +298,7 @@ def meta_dict(
     sources: dict[str, SourceMetadata] = {}
     for uid, sid in src_sid.items():
         proc_time = sid.meta['origin']['MPH']['PROC_TIME']
-        proc_time = _aware(proc_time)
+        proc_time = _as_utc(proc_time)
         try:
             proc_name, proc_version = sid.meta['origin']['MPH']['SOFTWARE_VER'].split('/')
             source_software = {proc_name: proc_version}
@@ -315,8 +317,8 @@ def meta_dict(
             status='ARCHIVED',
             access=URL['source_access'],
             doi=URL['source_doi'],
-            time_start=_aware(dateparse(sid.start)),
-            time_stop=_aware(dateparse(sid.stop)),
+            time_start=_as_utc(sid.start),
+            time_stop=_as_utc(sid.stop),
             geometry=GeometryMetadata(
                 bbox=tuple(float(x) for x in prod_meta['geom']['bbox']),
                 geometry=dict(prod_meta['geom']['geometry']),
