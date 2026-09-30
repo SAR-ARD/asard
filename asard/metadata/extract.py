@@ -247,8 +247,8 @@ def meta_dict(
             measurement='gamma0',
             convention='linear power',
             conversion_equation='10*log10(DN)',
-            range_number_of_looks=float(sid0.meta['looks'][0]),
-            azimuth_number_of_looks=float(sid0.meta['looks'][1]),
+            range_number_of_looks=prod_meta["ML_nRgLooks"],
+            azimuth_number_of_looks=prod_meta["ML_nAzLooks"],
             equivalent_number_of_looks=calc_enl(tif=ref_tif),
         ),
         geometric_correction=GeometricCorrectionMetadata(
