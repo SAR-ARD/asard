@@ -309,6 +309,9 @@ def meta_dict(
         osv_name = sid.meta['origin']['DSD']['ORBIT STATE VECTOR 1']['FILENAME']
         osv_source = ORB_MAP[sid.meta['origin']['MPH']['VECTOR_SOURCE']]
         
+        with sid.geometry() as vec:
+            geom = geometry_from_vec(vectorobject=vec)
+        
         sources[uid] = SourceMetadata(
             filename=sid.file,
             product_type=sid.meta['product'],
@@ -320,8 +323,8 @@ def meta_dict(
             time_start=_as_utc(sid.start),
             time_stop=_as_utc(sid.stop),
             geometry=GeometryMetadata(
-                bbox=tuple(float(x) for x in prod_meta['geom']['bbox']),
-                geometry=dict(prod_meta['geom']['geometry']),
+                bbox=tuple(float(x) for x in geom['bbox']),
+                geometry=dict(geom['geometry']),
             ),
             processing=ProcessingMetadata(
                 facility=sid.meta['origin']['MPH']['PROC_CENTER'],
