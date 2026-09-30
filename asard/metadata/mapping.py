@@ -21,7 +21,14 @@ ARD_PATTERN = r'^(?P<mission>ER[12]|ENV)' \
 # DN = DORIS Level 0 navigator product acquired at PDHS (NRT)
 # FR = FOS restituted orbit state vectors
 # DI = DORIS initial (preliminary) orbit
-# DP = DORIS precise orbit If not used, set to ØØ.    
+# DP = DORIS precise orbit
+# If not used, set to ØØ.
+
+# ERS
+# PD = predicted (ascending node)
+# RS = restituted
+# PL = preliminary
+# PC = precise
 ORB_MAP = {'PD': 'predicted',
            'RS': 'restituted',
            'PC': 'precise',

@@ -304,7 +304,9 @@ def meta_dict(
             proc_name = None
             source_software = {}
         
-        osv = sid.meta['origin']['DSD']['ORBIT STATE VECTOR 1']['FILENAME']
+        osv_name = sid.meta['origin']['DSD']['ORBIT STATE VECTOR 1']['FILENAME']
+        osv_source = ORB_MAP[sid.meta['origin']['MPH']['VECTOR_SOURCE']]
+        
         sources[uid] = SourceMetadata(
             filename=sid.file,
             product_type=sid.meta['product'],
@@ -333,8 +335,8 @@ def meta_dict(
                 major_cycle_id=sid.meta['cycleNumber'],
                 datatake_id=None,
                 data_access=URL['orbitDataAccess'],
-                data_source=ORB_MAP[sid.meta['origin']['MPH']['VECTOR_SOURCE']],
-                state_vector=osv,
+                data_source=osv_source,
+                state_vector=osv_name,
             ),
             swaths=(op_mode,),
             azimuth=SwathAxisMetadata(
