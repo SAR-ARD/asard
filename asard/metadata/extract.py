@@ -274,8 +274,8 @@ def meta_dict(
             reference=URL['radiometricAccuracyReference'],
         ),
         noise_removal=NoiseRemovalMetadata(
-            applied=NOISE_MAP[sid0.acquisition_mode],
-            algorithm=URL['noiseRemovalAlgorithm'],
+            applied=False,
+            algorithm=None,
         ),
         rtc_algorithm=URL['RTCAlgorithm'],
         number_of_acquisitions=len(src_sid),
