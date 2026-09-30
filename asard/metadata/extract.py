@@ -241,7 +241,7 @@ def meta_dict(
             gsd=dem_gsd,
             resampling_method='bilinear',
             egm_reference=dem['egm'],
-            egm_resampling_method='bilinear' if dem['egm'] is None else None,
+            egm_resampling_method='bilinear' if dem['egm'] is not None else None,
         ),
         backscatter=BackscatterMetadata(
             measurement='gamma0',
