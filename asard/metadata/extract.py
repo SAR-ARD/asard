@@ -335,15 +335,15 @@ def meta_dict(
             swaths=(op_mode,),
             azimuth=SwathAxisMetadata(
                 look_bandwidth={op_mode: NOT_IMPLEMENTED_NUMBER},
-                number_of_looks={op_mode: float(sid.meta['looks'][1])},
-                pixel_spacing={op_mode: float(sid.meta['spacing'][1])},
-                resolution={op_mode: float(sid.meta['resolution'][1])},
+                number_of_looks={op_mode: sid.meta['looks'][1]},
+                pixel_spacing={op_mode: sid.meta['spacing'][1]},
+                resolution={op_mode: sid.meta['resolution'][1]},
             ),
             range=SwathAxisMetadata(
                 look_bandwidth={op_mode: NOT_IMPLEMENTED_NUMBER},
-                number_of_looks={op_mode: float(sid.meta['looks'][0])},
-                pixel_spacing={op_mode: float(sid.meta['spacing'][0])},
-                resolution={op_mode: float(sid.meta['resolution'][0])},
+                number_of_looks={op_mode: sid.meta['looks'][0]},
+                pixel_spacing={op_mode: sid.meta['spacing'][0]},
+                resolution={op_mode: sid.meta['resolution'][0]},
             ),
             incidence_angle=IncidenceAngleMetadata(
                 minimum=float(sid.meta['incidence_nr']),
