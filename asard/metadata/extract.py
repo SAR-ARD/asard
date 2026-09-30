@@ -1,3 +1,4 @@
+import re
 import numpy as np
 from dateutil.parser import parse as dateparse
 from datetime import timezone
@@ -122,13 +123,16 @@ def meta_dict(
     dem = DEM_MAP[dem_name]
     dem_gsd = dem['gsd']
     if isinstance(dem_gsd, str):
-        parts = dem_gsd.split()
+        value, unit = re.search(
+            '(^[0-9]+) (m|arcsec)$',
+            dem_gsd
+        ).groups()
         dem_gsd = GroundSamplingDistance(
-            value=float(parts[0]),
-            unit=parts[1] if len(parts) == 2 else 'm',
+            value=float(value),
+            unit=unit,
         )
     else:
-        dem_gsd = GroundSamplingDistance(value=float(dem_gsd), unit='m')
+        raise ValueError('DEM GSD must be a string')
     
     # COMMON metadata
     if sid0.sensor == 'ASAR':
