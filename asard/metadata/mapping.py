@@ -16,6 +16,23 @@ ARD_PATTERN = r'^(?P<mission>ER[12]|ENV)' \
               r'(?P<pols>[HV_]{4}_)' \
               r'(?P<tile>[0-9A-Z]{5})'
 
+NS_MAP_ARD = {
+    'ers': {
+        'NRB': {
+            'key': 'ers-nrb',
+            'source': 'http://earth.esa.int/sentinel-1/ers/source/1.0',
+            'product': 'http://earth.esa.int/sentinel-1/ers/product/1.0',
+        }
+    },
+    'envisat': {
+        'NRB': {
+            'key': 'envisat-nrb',
+            'source': 'http://earth.esa.int/sentinel-1/envisat/source/1.0',
+            'product': 'http://earth.esa.int/sentinel-1/envisat/product/1.0',
+        }
+    },
+}
+
 # Envisat
 # FP = FOS predicted orbit state vectors (NRT processing)
 # DN = DORIS Level 0 navigator product acquired at PDHS (NRT)
