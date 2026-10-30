@@ -60,6 +60,33 @@ SNAP
         process
         pre
 
+SARSEN
+++++++
+
+.. automodule:: asard.sarsenic
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+    .. rubric:: main interface
+
+    .. autosummary::
+        :nosignatures:
+
+        find_datasets
+        get_config_keys
+        get_config_section
+        lsm_encoding
+        version_dict
+
+
+    .. rubric:: processor-specific functions
+
+    .. autosummary::
+        :nosignatures:
+
+        process
+
 ARD
 ^^^
 
