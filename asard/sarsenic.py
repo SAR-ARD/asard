@@ -131,11 +131,7 @@ def process(
     outdir:
         The output directory for storing the final results.
     dem:
-        The DEM filenames. Can be created with :func:`cesard.dem.create`.
-
-    Returns
-    -------
-
+        The DEM filenames. Can be created with :func:`cesard.dem.prepare`.
     """
     basename = os.path.splitext(os.path.basename(scene))[0]
     outdir_scene = os.path.join(outdir, basename)
