@@ -2,8 +2,7 @@ import os
 import shutil
 from spatialist.ancillary import finder
 from pyroSAR import identify
-from pyroSAR.snap.auxil import gpt, parse_recipe, parse_node, \
-    orb_parametrize
+from pyroSAR.snap.auxil import gpt, parse_recipe, parse_node
 from pyroSAR.ancillary import Lock, LockCollection
 
 from asard import osv

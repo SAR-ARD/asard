@@ -2,11 +2,11 @@ name: asard
 channels:
   - conda-forge
 dependencies:
-  - cesard>=1.1.1
+  - cesard>=1.4.0
   - click>=7.1.0
   - gdal>=3.5.0
   - numpy
-  - pyrosar>=0.32.0
-  - python>=3.10
+  - pyrosar>=0.39.0
+  - python>=3.11
   - python-dateutil
-  - spatialist>=0.15.2
+  - spatialist>=0.20.1

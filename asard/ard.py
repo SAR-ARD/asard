@@ -12,7 +12,7 @@ from pyroSAR.drivers import ID, identify_many
 from pyroSAR.ancillary import Lock
 import asard
 from asard.metadata.extract import meta_dict
-from asard.metadata.mapping import ARD_PATTERN
+from asard.metadata.mapping import ARD_PATTERN, NS_MAP_ARD
 from cesard import dem
 from cesard.ard import calc_product_start_stop, create_data_mask, create_acq_id_image, create_rgb_vrt, create_vrt
 from cesard.metadata import xml, stac
@@ -60,7 +60,8 @@ def append_metadata(config, prod_meta, src_ids, assets, compression):
                 shutil.copy(schema_in, schema_out)
     
     # create metadata files
-    xml.parse(meta=meta, target=prod_meta['dir_ard'], assets=assets, exist_ok=True)
+    xml.parse(meta=meta, target=prod_meta['dir_ard'], assets=assets,
+              nsmap_ard=NS_MAP_ARD, exist_ok=True)
     stac.parse(meta=meta, target=prod_meta['dir_ard'], assets=assets, exist_ok=True)
 
 
