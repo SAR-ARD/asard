@@ -8,7 +8,6 @@ requires-python = ">=3.10"
 license = { file = "LICENSE.txt" }
 maintainers = [
     { name = "John Truckenbrodt", email = "john.truckenbrodt@dlr.de" },
-    { name = "Ricardo Noguera", email = "ricardo.noguera@telespazio.com" }
 ]
 classifiers = [
     "License :: OSI Approved :: MIT License",
@@ -24,7 +23,7 @@ documentation = "https://asard.readthedocs.io/en/latest/"
 
 [project.optional-dependencies]
 test = ["pytest", "requests"]
-docs = ["sphinx", "sphinxcontrib-bibtex", "nbsphinx", "sphinx_rtd_theme", "sphinx-toolbox", "ipython"]
+docs = ["sphinx", "sphinxcontrib-bibtex", "sphinx_rtd_theme"]
 
 [tool.setuptools]
 include-package-data = true

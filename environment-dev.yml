@@ -10,7 +10,3 @@ dependencies:
   - python>=3.10
   - python-dateutil
   - spatialist>=0.15.2
-  - sphinx
-  - sphinxcontrib-bibtex>=2.2
-  - nbsphinx
-  - sphinx_rtd_theme
