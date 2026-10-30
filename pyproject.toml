@@ -23,7 +23,7 @@ documentation = "https://asard.readthedocs.io/en/latest/"
 
 [project.optional-dependencies]
 test = ["pytest", "requests"]
-docs = ["sphinx", "sphinxcontrib-bibtex", "nbsphinx", "sphinx_rtd_theme", "sphinx-toolbox", "ipython"]
+docs = ["sphinx", "sphinxcontrib-bibtex", "sphinx_rtd_theme"]
 
 [tool.setuptools]
 include-package-data = true

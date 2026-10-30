@@ -21,7 +21,7 @@ version = '.'.join(version_full.split('.')[:2])
 # release is automatically added to the latex document title and header
 release = version
 
-autodoc_mock_imports = ['osgeo']
+autodoc_mock_imports = ['cesard', 'dateutil', 'numpy', 'osgeo', 'pandas', 'pyroSAR', 'spatialist']
 
 # If your documentation needs a minimal Sphinx version, state it here.
 needs_sphinx = '1.6'
@@ -37,7 +37,6 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
     'sphinxcontrib.bibtex',
-    'nbsphinx'
 ]
 
 bibtex_bibfiles = ['references.bib']
@@ -45,18 +44,13 @@ bibtex_bibfiles = ['references.bib']
 # autodoc_default_flags = ['members']
 autosummary_generate = True
 
-# explicitly link to documentation of the spatialist version installed alongside pyroSAR,
-# which is defined in setup.py and requirements.txt
-version_pyrosar = get_version('pyroSAR')
-version_spatialist = get_version('spatialist')
-
 intersphinx_mapping = {
     'cesard': ('https://cesard.readthedocs.io/en/latest', None),
     'dateutil': ('https://dateutil.readthedocs.io/en/stable', None),
     'python': ('https://docs.python.org/3', None),
-    'pyroSAR': (f'https://pyrosar.readthedocs.io/en/v{version_pyrosar}', None),
+    'pyroSAR': (f'https://pyrosar.readthedocs.io/en/latest', None),
     's1ard': ('https://s1ard.readthedocs.io/en/latest', None),
-    'spatialist': (f'https://spatialist.readthedocs.io/en/v{version_spatialist}', None)
+    'spatialist': (f'https://spatialist.readthedocs.io/en/latest', None)
 }
 
 napoleon_google_docstring = False
